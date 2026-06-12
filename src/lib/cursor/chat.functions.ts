@@ -31,12 +31,15 @@ export const createCursorThread = createServerFn({ method: "POST" })
     z.object({ agentName, title: z.string().trim().min(1).max(160).default("New conversation") }),
   )
   .handler(async ({ data, context }) => {
+    if (context.claims?.is_anonymous) {
+      throw new Error("Guest sessions can't start a conversation. Please sign in.");
+    }
     const { data: row, error } = await context.supabase
       .from("cursor_threads")
       .insert({ user_id: context.userId, agent_name: data.agentName, title: data.title })
       .select("id, agent_name, cursor_agent_id, title, created_at, updated_at")
       .single();
-    if (error || !row) throw new Error("Could not create conversation");
+    if (error || !row) throw new Error(error?.message ?? "Could not create conversation");
     return row as CursorThread;
   });
 
