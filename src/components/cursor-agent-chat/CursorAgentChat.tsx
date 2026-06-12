@@ -1,32 +1,36 @@
 import { ExternalLink } from "lucide-react";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import type { CursorMessage, CursorThread as CursorThreadType } from "@/lib/cursor/types";
+import type { CursorThreadHydrated } from "@/lib/cursor/types";
 import { CursorThreadSidebar } from "./CursorThreadSidebar";
 import { CursorThread } from "./CursorThread";
 import { useCursorRuntime } from "./useCursorRuntime";
 
 export type CursorAgentChatProps = {
   agentName: string;
-  thread: CursorThreadType;
-  messages: CursorMessage[];
+  data: CursorThreadHydrated;
   className?: string;
 };
 
-export function CursorAgentChat({ agentName, thread, messages, className }: CursorAgentChatProps) {
+export function CursorAgentChat({ agentName, data, className }: CursorAgentChatProps) {
   return (
     <CursorAgentChatRuntime
-      key={thread.id}
+      key={data.thread.id}
       agentName={agentName}
-      thread={thread}
-      messages={messages}
+      data={data}
       className={className}
     />
   );
 }
 
-function CursorAgentChatRuntime({ agentName, thread, messages, className }: CursorAgentChatProps) {
-  const runtime = useCursorRuntime(thread.id, messages);
+function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatProps) {
+  const { thread, messages, liveRunId } = data;
+  const runtime = useCursorRuntime({
+    threadId: thread.id,
+    agentId: thread.cursor_agent_id,
+    initialMessages: messages,
+    liveRunId,
+  });
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <SidebarProvider className={className}>
