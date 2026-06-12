@@ -172,35 +172,31 @@ export const sendCursorMessage = createServerFn({ method: "POST" })
         .single();
       if (assistantError || !assistantMessage)
         throw new Error("Could not create assistant response");
-      const { error: runError } = await context.supabase
-        .from("cursor_runs")
-        .insert({
-          thread_id: thread.id,
-          user_message_id: userMessage.id,
-          assistant_message_id: assistantMessage.id,
-          user_id: context.userId,
-          agent_name: thread.agent_name,
-          cursor_agent_id: cursorAgentId,
-          cursor_run_id: cursorRunId,
-          source,
-          status: "creating",
-        });
+      const { error: runError } = await context.supabase.from("cursor_runs").insert({
+        thread_id: thread.id,
+        user_message_id: userMessage.id,
+        assistant_message_id: assistantMessage.id,
+        user_id: context.userId,
+        agent_name: thread.agent_name,
+        cursor_agent_id: cursorAgentId,
+        cursor_run_id: cursorRunId,
+        source,
+        status: "creating",
+      });
       if (runError) throw new Error("Could not record Cursor run");
       return { assistantMessageId: assistantMessage.id, cursorAgentId, cursorRunId };
     } catch (error) {
-      await context.supabase
-        .from("cursor_messages")
-        .insert({
-          thread_id: thread.id,
-          user_id: context.userId,
-          agent_name: thread.agent_name,
-          role: "assistant",
-          content: "",
-          status: "error",
-          error_code: "cursor_start_failed",
-          error_message: error instanceof Error ? error.message : "Cursor request failed",
-          completed_at: new Date().toISOString(),
-        });
+      await context.supabase.from("cursor_messages").insert({
+        thread_id: thread.id,
+        user_id: context.userId,
+        agent_name: thread.agent_name,
+        role: "assistant",
+        content: "",
+        status: "error",
+        error_code: "cursor_start_failed",
+        error_message: error instanceof Error ? error.message : "Cursor request failed",
+        completed_at: new Date().toISOString(),
+      });
       throw error;
     }
   });
