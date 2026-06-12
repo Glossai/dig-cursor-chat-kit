@@ -140,17 +140,15 @@ export const getCursorThread = createServerFn({ method: "GET" })
         });
       }
       // Assistant — content + status from Cursor
-      const status: CursorHydratedMessage["kind"] extends "assistant"
-        ? never
-        : never extends never
-          ? "running" | "complete" | "error" | "cancelled"
-          : never = (() => {
-        const raw = (detail?.status ?? run.status) as string;
-        if (raw === "RUNNING" || raw === "CREATING") return "running" as const;
-        if (raw === "ERROR") return "error" as const;
-        if (raw === "CANCELLED" || raw === "EXPIRED") return "cancelled" as const;
-        return "complete" as const;
-      })();
+      const raw = (detail?.status ?? run.status) as string;
+      const status: "running" | "complete" | "error" | "cancelled" =
+        raw === "RUNNING" || raw === "CREATING"
+          ? "running"
+          : raw === "ERROR"
+            ? "error"
+            : raw === "CANCELLED" || raw === "EXPIRED"
+              ? "cancelled"
+              : "complete";
       if (status === "running" && !liveRunId) liveRunId = run.id;
 
       const tokens = usageByRunId.get(run.id) ?? null;
