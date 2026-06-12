@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -23,10 +24,19 @@ function AuthPage() {
   const finish = async (action: () => Promise<{ error: { message: string } | null }>) => {
     setBusy(true);
     setError("");
-    const result = await action();
-    setBusy(false);
-    if (result.error) setError(result.error.message);
-    else await navigate({ to: "/chat" });
+    try {
+      const result = await action();
+      if (result.error) {
+        setError(result.error.message);
+        return;
+      }
+      await router.invalidate();
+      await navigate({ to: "/chat", replace: true });
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "Authentication failed");
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <main className="grid min-h-svh place-items-center bg-background p-5">
