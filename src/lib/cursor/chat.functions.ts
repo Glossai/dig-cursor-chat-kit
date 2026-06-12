@@ -76,11 +76,12 @@ export const getCursorThread = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<CursorThreadHydrated> => {
     const { data: thread, error: threadError } = await context.supabase
       .from("cursor_threads")
-      .select("id, agent_name, cursor_agent_id, title, created_at, updated_at")
+      .select("id, agent_name, cursor_agent_id, title, created_at, updated_at, active_run_id")
       .eq("id", data.threadId)
       .eq("user_id", context.userId)
       .single();
     if (threadError || !thread) throw new Error("Conversation not found");
+    const pinnedRunId = thread.active_run_id;
     const { data: prompts, error: promptsError } = await context.supabase
       .from("cursor_messages")
       .select("id, thread_id, cursor_run_id, content, created_at")
@@ -150,6 +151,7 @@ export const getCursorThread = createServerFn({ method: "GET" })
               ? "cancelled"
               : "complete";
       if (status === "running" && !liveRunId) liveRunId = run.id;
+      if (pinnedRunId && run.id === pinnedRunId && status === "running") liveRunId = run.id;
 
       const tokens = usageByRunId.get(run.id) ?? null;
       const cost = tokens ? resolveRunCost(null, tokens, null) : null;
@@ -221,22 +223,22 @@ export const sendCursorMessage = createServerFn({ method: "POST" })
       .single();
     if (promptError || !prompt) throw new Error("Could not save your prompt");
 
-    // First message in a thread: link the agent and seed a title
+    // Always pin the new run as the thread's active run so reload/toggle
+    // can reconnect instantly without listing runs.
+    const threadPatch: Record<string, unknown> = {
+      active_run_id: cursorRunId,
+      updated_at: new Date().toISOString(),
+    };
     if (!thread.cursor_agent_id) {
-      const { error } = await context.supabase
-        .from("cursor_threads")
-        .update({ cursor_agent_id: cursorAgentId, title: data.text.slice(0, 80) })
-        .eq("id", thread.id)
-        .eq("user_id", context.userId);
-      if (error) throw new Error("Could not link Cursor agent");
-    } else {
-      // Touch updated_at so the sidebar reorders
-      await context.supabase
-        .from("cursor_threads")
-        .update({ updated_at: new Date().toISOString() })
-        .eq("id", thread.id)
-        .eq("user_id", context.userId);
+      threadPatch.cursor_agent_id = cursorAgentId;
+      threadPatch.title = data.text.slice(0, 80);
     }
+    const { error: threadUpdateError } = await context.supabase
+      .from("cursor_threads")
+      .update(threadPatch)
+      .eq("id", thread.id)
+      .eq("user_id", context.userId);
+    if (threadUpdateError) throw new Error("Could not update conversation");
 
     return {
       promptId: prompt.id,
