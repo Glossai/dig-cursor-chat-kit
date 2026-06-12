@@ -34,11 +34,8 @@ Before running steps:
    and Lovable Cloud (`src/integrations/supabase/client.ts` exists).
 2. Confirm `requireSupabaseAuth` is registered in `src/start.ts` global
    `functionMiddleware`. If not, add `attachSupabaseAuth` first.
-3. Ask the user for the agent map up front:
-   - human-readable `agentKey` (e.g. `support-bot`)
-   - Cursor agent ID (`agt_...`)
-   - model (e.g. `sonnet-4`)
-   - which secret holds the API key (defaults to `CURSOR_API_KEY`)
+3. Ask for the human-readable `agentName` used in env names (for example
+   `support-bot`). The kit creates and persists Cursor agent IDs at runtime.
 
 If the user wants more than one agent, collect them all before scaffolding so
 the wiring file is written once.
@@ -69,30 +66,32 @@ the wiring file is written once.
      resolver returns `{ userId, db, isAnonymous? }` where `db` is an
      RLS-scoped client. For a Lovable Cloud (Supabase) project:
      ```ts
-     import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
-
-     // Wrap the host's middleware once per server-fn call. Each kit handler
-     // runs `await resolveAuth()` at the top of `.handler()`, so userId is
-     // server-derived and never accepted as client input.
-     resolveAuth: async () => {
-       const ctx = await requireSupabaseAuth.resolve();
-       return {
-         userId: ctx.userId,
-         db: ctx.supabase,
-         isAnonymous: ctx.claims?.is_anonymous === true,
-       };
-     },
+     // Server-function wrappers pass their verified middleware context into
+     // a request-scoped backend instance. Never call middleware internals or
+     // accept userId from client input.
+     const backend = createCursorChatBackend({
+       resolveAuth: async () => ({
+         userId: context.userId,
+         db: context.supabase,
+         isAnonymous: context.claims?.is_anonymous === true,
+       }),
+       resolveAgentConfig: getCursorConfigFromEnv,
+       getAdminClient: async () =>
+         (await import('@/integrations/supabase/client.server')).supabaseAdmin,
+       policy: { allowAnonymous: false },
+     });
      policy: { allowAnonymous: false },
      ```
      For Clerk / Auth.js / Better-Auth / custom JWT: return the same shape
      from that provider's session reader. Nothing else changes.
    - `getAdminClient: async () => (await import('@/integrations/supabase/client.server')).supabaseAdmin`
      — used only for the usage-ledger upsert.
-   - `cursor: { apiKey: process.env.CURSOR_API_KEY!, webhookUrl: ... }`
-   - `agents: { '<agentKey>': { cursorAgentId, model } }`
+    - `resolveAgentConfig` reads
+      `CURSOR_<AGENT>_{API_KEY,WEBHOOK_URL,WEBHOOK_TOKEN}` at request time.
 
-   Export the resulting `chatFunctions` and re-export them from
-   `src/lib/cursor/chat.functions.ts` so TanStack picks them up as server fns.
+   Each `createServerFn` wrapper validates input, builds the backend from its
+   authenticated `context`, and delegates to `backend.listThreads`,
+   `createThread`, `getThread`, `sendMessage`, or `cancelMessage`.
 
 
 5. **Add the SSE proxy route** at `src/routes/api/cursor/stream.$runId.ts`,
@@ -100,8 +99,10 @@ the wiring file is written once.
 
 6. **Drop the component.** In the route where the chat should appear:
    ```tsx
-   import { CursorAgentChat } from '@lovable/cursor-chat-kit/react';
-   <CursorAgentChat threadId={threadId} agentKey="support-bot" />
+   import { CursorAgentChat, CursorChatProvider } from '@lovable/cursor-chat-kit/react';
+   <CursorChatProvider client={client}>
+     <CursorAgentChat agentName="support-bot" data={hydratedThread} />
+   </CursorChatProvider>
    ```
 
 7. **Verify.** Send a test message, confirm the SSE stream renders, and
@@ -117,13 +118,6 @@ the wiring file is written once.
 - Never import from `@/...` inside the kit. All project-specific values flow
   through the factory.
 - Read `process.env.*` inside `.handler()` bodies, not at module scope, or
-  TanStack server functions will see `undefined` at call time.
-- Keep the SSE proxy under `src/routes/api/` (not `/api/public/`) unless the
-  consumer explicitly wants unauthenticated access — Cursor responses can
-  leak run content.
-- After applying the migration, verify every new `public.cursor_*` table has
-  `GRANT`s to `authenticated` and `service_role`. The kit's migration
-  includes them; if you edit the SQL, keep them.
   TanStack server functions will see `undefined` at call time.
 - Keep the SSE proxy under `src/routes/api/` (not `/api/public/`) unless the
   consumer explicitly wants unauthenticated access — Cursor responses can

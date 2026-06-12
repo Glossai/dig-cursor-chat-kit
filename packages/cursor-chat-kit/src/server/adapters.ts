@@ -30,8 +30,25 @@ export type CursorAuthContext = {
 export type CursorAuthResolver = () => Promise<CursorAuthContext>;
 
 /** Minimal authenticated DB surface used by chat/thread/message queries. */
+export type DbResult<T = unknown> = {
+  data: T | null;
+  error: { message: string } | null;
+};
+
+export type DbQueryLike<T = unknown> = PromiseLike<DbResult<T>> & {
+  select(columns: string): DbQueryLike<T>;
+  insert(values: Record<string, unknown>): DbQueryLike<T>;
+  update(values: Record<string, unknown>): DbQueryLike<T>;
+  delete(): DbQueryLike<T>;
+  eq(column: string, value: unknown): DbQueryLike<T>;
+  in(column: string, values: readonly unknown[]): DbQueryLike<T>;
+  order(column: string, options?: { ascending?: boolean }): DbQueryLike<T>;
+  single(): Promise<DbResult<T>>;
+  maybeSingle(): Promise<DbResult<T>>;
+};
+
 export type AuthedDbClientLike = {
-  from(table: string): unknown;
+  from<T = unknown>(table: string): DbQueryLike<T>;
 };
 
 /** Minimal shape required from a Supabase-compatible admin client. */

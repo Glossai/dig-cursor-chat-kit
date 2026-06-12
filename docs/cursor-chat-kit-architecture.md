@@ -1,6 +1,6 @@
 # Cursor Chat Kit — Architecture Proposal
 
-**Status:** Draft for review.
+**Status:** v0.1 release candidate implemented.
 **Audience:** Frontend Team Lead (second opinion before Phase 2).
 **Scope:** Turn the in-repo Cursor background-agent chat into a reusable kit
 that other Lovable projects (and eventually other teams) can drop in.
@@ -191,7 +191,7 @@ Three layers:
 ## 6. Layout (current state)
 
 ```text
-packages/cursor-chat-kit/                ← Phase 1 — DONE
+packages/cursor-chat-kit/                ← v0.1 release candidate
 ├── package.json                         ← name @lovable/cursor-chat-kit, private
 ├── README.md
 ├── migrations/
@@ -199,12 +199,15 @@ packages/cursor-chat-kit/                ← Phase 1 — DONE
 └── src/
     ├── index.ts                         ← public type re-exports
     ├── types.ts                         ← CursorThread, CursorRunUsage, …
+    ├── react/                           ← provider + reusable chat surface
     └── server/
         ├── index.ts
         ├── adapters.ts                  ← interfaces consumers implement
         ├── pricing.ts                   ← pure cost resolver + static table
         ├── cursor-api.ts                ← Cursor REST/SSE client (config injected)
-        └── usage.ts                     ← cursor_run_usage upsert (admin injected)
+        ├── usage.ts                     ← cursor_run_usage upsert (admin injected)
+        ├── backend.ts                   ← auth-agnostic operations factory
+        └── stream.ts                    ← injectable NDJSON stream handler
 
 src/lib/cursor/                          ← project shims, unchanged call sites
 ├── types.ts                             → re-export from kit
@@ -212,9 +215,9 @@ src/lib/cursor/                          ← project shims, unchanged call sites
 ├── cursor.server.ts                     → wires env resolver + kit client
 └── usage.server.ts                      → wires Supabase admin + kit upsert
 
-src/components/cursor-agent-chat/        ← Phase 2 will move into kit/react/
-src/lib/cursor/chat.functions.ts         ← Phase 2 (TanStack server fns)
-src/routes/api/cursor/stream.$runId.ts   ← Phase 2 (SSE proxy)
+src/components/cursor-agent-chat/        ← host reference implementation
+src/lib/cursor/chat.functions.ts         ← host server-function wrappers
+src/routes/api/cursor/stream.$runId.ts   ← host route wrapper
 ```
 
 ---
