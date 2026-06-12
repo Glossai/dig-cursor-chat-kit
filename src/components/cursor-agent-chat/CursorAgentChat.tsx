@@ -1,6 +1,4 @@
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
-import { PanelLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import type { CursorMessage, CursorThread as CursorThreadType } from "@/lib/cursor/types";
 import { CursorThreadSidebar } from "./CursorThreadSidebar";
@@ -35,11 +33,7 @@ function CursorAgentChatRuntime({ agentName, thread, messages, className }: Curs
         <SidebarInset className="min-h-svh overflow-hidden bg-background">
           <header className="flex h-14 shrink-0 items-center justify-between border-b px-3">
             <div className="flex min-w-0 items-center gap-2">
-              <SidebarTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <PanelLeft />
-                </Button>
-              </SidebarTrigger>
+              <SidebarTrigger />
               <div className="min-w-0">
                 <h1 className="truncate text-sm font-semibold">{thread.title}</h1>
                 <p className="text-xs text-muted-foreground">
