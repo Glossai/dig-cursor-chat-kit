@@ -44,9 +44,23 @@ function CursorAgentChatRuntime({ agentName, thread, messages, className }: Curs
                 </p>
               </div>
             </div>
-            <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-secondary-foreground">
-              Cloud agent
-            </span>
+            <div className="flex items-center gap-2">
+              {thread.cursor_agent_id && (
+                <a
+                  href={`https://cursor.com/agents/${thread.cursor_agent_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground/80 shadow-sm transition hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                >
+                  <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_currentColor]" />
+                  Open in Cursor
+                  <ExternalLink className="size-3 opacity-60 transition group-hover:opacity-100" />
+                </a>
+              )}
+              <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-secondary-foreground">
+                Cloud agent
+              </span>
+            </div>
           </header>
           <CursorThread />
         </SidebarInset>
