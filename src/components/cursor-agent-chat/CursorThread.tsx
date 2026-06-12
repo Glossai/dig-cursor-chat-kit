@@ -9,30 +9,9 @@ import {
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
-import type { CursorRunUsage } from "@/lib/cursor/types";
 
-function MessageUsage() {
-  const usage = useMessage(
-    (state) => (state.metadata?.custom as { usage?: CursorRunUsage } | undefined)?.usage,
-  );
-  if (!usage) return null;
-  const cost =
-    usage.totalCostMicros === null
-      ? "Cost unavailable"
-      : `$${(usage.totalCostMicros / 1_000_000).toFixed(4)}`;
-  return (
-    <details className="mt-3 text-xs text-muted-foreground">
-      <summary className="cursor-pointer">
-        {usage.totalTokens.toLocaleString()} tokens · {cost}
-      </summary>
-      <p className="mt-1">
-        Input {usage.inputTokens.toLocaleString()} · Output {usage.outputTokens.toLocaleString()} ·
-        Cache read {usage.cacheReadTokens.toLocaleString()} · Cache write{" "}
-        {usage.cacheWriteTokens.toLocaleString()}
-      </p>
-    </details>
-  );
-}
+
+
 
 function CodeHeader({ language, code }: { language?: string; code: string }) {
   const [copied, setCopied] = useState(false);
@@ -119,7 +98,6 @@ function ChatMessage() {
         <>
           <MessagePrimitive.Parts components={{ Text: AssistantMarkdown }} />
           <ThinkingIndicator />
-          <MessageUsage />
         </>
       ) : (
         <MessagePrimitive.Parts />
