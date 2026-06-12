@@ -6,6 +6,7 @@ import {
   recordRunUsage as kitRecordRunUsage,
   type RecordRunUsageInput,
 } from "../../../packages/cursor-chat-kit/src/server/usage";
+import type { AdminClientLike } from "../../../packages/cursor-chat-kit/src/server/adapters";
 
 export type { RecordRunUsageInput } from "../../../packages/cursor-chat-kit/src/server/usage";
 
@@ -14,9 +15,7 @@ export function recordRunUsage(input: RecordRunUsageInput) {
     {
       getAdminClient: async () => {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        return supabaseAdmin as unknown as Parameters<typeof kitRecordRunUsage>[0]["getAdminClient"] extends () => Promise<infer T>
-          ? T
-          : never;
+        return supabaseAdmin as unknown as AdminClientLike;
       },
     },
     input,
