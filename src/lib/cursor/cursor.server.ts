@@ -27,10 +27,20 @@ export function getCursorConfig(agentName: string) {
 async function checkedJson(url: string, init: RequestInit, timeoutMs = 30_000) {
   const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   const text = await response.text();
-  if (!response.ok)
+  if (!response.ok) {
+    let providerMessage = "";
+    try {
+      const errorBody = JSON.parse(text) as { message?: unknown };
+      if (typeof errorBody.message === "string") providerMessage = `: ${errorBody.message}`;
+    } catch {
+      providerMessage = "";
+    }
     throw new Error(
-      `Cursor request failed (${response.status})${response.status === 409 ? ": agent is busy" : ""}`,
+      `Cursor request failed (${response.status})${
+        response.status === 409 ? ": agent is busy" : providerMessage
+      }`,
     );
+  }
   try {
     return text ? (JSON.parse(text) as Record<string, unknown>) : {};
   } catch {
@@ -39,7 +49,7 @@ async function checkedJson(url: string, init: RequestInit, timeoutMs = 30_000) {
 }
 
 const apiHeaders = (apiKey: string) => ({
-  Authorization: `Bearer ${apiKey}`,
+  Authorization: `Basic ${btoa(`${apiKey}:`)}`,
   "Content-Type": "application/json",
 });
 
