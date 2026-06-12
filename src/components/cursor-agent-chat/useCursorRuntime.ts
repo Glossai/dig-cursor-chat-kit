@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   useExternalStoreRuntime,
@@ -9,11 +9,108 @@ import { cancelCursorMessage, sendCursorMessage } from "@/lib/cursor/chat.functi
 import type { CursorHydratedMessage, CursorRunUsage } from "@/lib/cursor/types";
 import { readCursorStream } from "./cursorStreamClient";
 
-function extractText(content: AppendMessage["content"]): string {
-  return content
-    .map((part) => (part.type === "text" ? part.text : ""))
-    .join("")
-    .trim();
+/* ------------------------------------------------------------------
+ * Module-level per-thread store
+ *
+ * Keeps messages + in-flight SSE alive across thread toggles. When the
+ * user navigates away from a chat the component unmounts, but the store
+ * (and the AbortController-backed stream loop) keep running. On return,
+ * the new mount re-subscribes and immediately sees current text / status.
+ * ------------------------------------------------------------------ */
+
+type ActiveRun = { agentId: string; runId: string; abort: AbortController };
+
+type ThreadStore = {
+  threadId: string;
+  agentId: string | null;
+  messages: CursorHydratedMessage[];
+  isRunning: boolean;
+  activeRun: ActiveRun | null;
+  listeners: Set<() => void>;
+};
+
+const stores = new Map<string, ThreadStore>();
+
+function getOrCreateStore(
+  threadId: string,
+  initialMessages: CursorHydratedMessage[],
+  agentId: string | null,
+): ThreadStore {
+  let store = stores.get(threadId);
+  if (!store) {
+    store = {
+      threadId,
+      agentId,
+      messages: initialMessages,
+      isRunning: false,
+      activeRun: null,
+      listeners: new Set(),
+    };
+    stores.set(threadId, store);
+  }
+  return store;
+}
+
+function notify(store: ThreadStore) {
+  for (const l of store.listeners) l();
+}
+
+function patchAssistant(
+  store: ThreadStore,
+  id: string,
+  patch: Partial<Extract<CursorHydratedMessage, { kind: "assistant" }>>,
+) {
+  store.messages = store.messages.map((m) =>
+    m.id === id && m.kind === "assistant" ? { ...m, ...patch } : m,
+  );
+  notify(store);
+}
+
+async function runStreamLoop(
+  store: ThreadStore,
+  agentId: string,
+  runId: string,
+  assistantId: string,
+) {
+  const controller = new AbortController();
+  store.activeRun = { agentId, runId, abort: controller };
+  store.isRunning = true;
+  notify(store);
+  try {
+    for await (const event of readCursorStream(agentId, runId, controller.signal)) {
+      if (event.type === "delta") {
+        store.messages = store.messages.map((m) =>
+          m.id === assistantId && m.kind === "assistant"
+            ? { ...m, content: m.content + event.text }
+            : m,
+        );
+        notify(store);
+      } else if (event.type === "done") {
+        patchAssistant(store, assistantId, {
+          content: event.text,
+          status: "complete",
+          usage: event.usage as CursorRunUsage | null,
+        });
+        return;
+      } else if (event.type === "error") {
+        patchAssistant(store, assistantId, { status: "error", errorMessage: event.message });
+        return;
+      }
+    }
+  } catch (error) {
+    if (controller.signal.aborted) {
+      patchAssistant(store, assistantId, { status: "cancelled" });
+    } else {
+      patchAssistant(store, assistantId, {
+        status: "error",
+        errorMessage: error instanceof Error ? error.message : "Stream failed",
+      });
+    }
+  } finally {
+    if (store.activeRun?.runId === runId) store.activeRun = null;
+    store.isRunning = false;
+    notify(store);
+  }
 }
 
 function convertMessage(m: CursorHydratedMessage): ThreadMessageLike {
@@ -47,6 +144,13 @@ function convertMessage(m: CursorHydratedMessage): ThreadMessageLike {
   };
 }
 
+function extractText(content: AppendMessage["content"]): string {
+  return content
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("")
+    .trim();
+}
+
 type RuntimeArgs = {
   threadId: string;
   agentId: string | null;
@@ -63,84 +167,55 @@ export function useCursorRuntime({
   const send = useServerFn(sendCursorMessage);
   const cancel = useServerFn(cancelCursorMessage);
 
-  const [messages, setMessages] = useState<CursorHydratedMessage[]>(initialMessages);
-  const [isRunning, setIsRunning] = useState(liveRunId != null);
-  const agentIdRef = useRef<string | null>(agentId);
-  const activeRunRef = useRef<{ agentId: string; runId: string; abort: AbortController } | null>(
-    null,
+  const store = useMemo(
+    () => getOrCreateStore(threadId, initialMessages, agentId),
+    // initialMessages identity changes on re-hydrate; that's intentional —
+    // see the reconciliation effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [threadId],
   );
 
-  // Keep refs fresh
+  const subscribe = useCallback(
+    (cb: () => void) => {
+      store.listeners.add(cb);
+      return () => store.listeners.delete(cb);
+    },
+    [store],
+  );
+  const messages = useSyncExternalStore(
+    subscribe,
+    () => store.messages,
+    () => store.messages,
+  );
+  const isRunning = useSyncExternalStore(
+    subscribe,
+    () => store.isRunning,
+    () => store.isRunning,
+  );
+
+  // Reconcile: when the server hydration delivers a fresher snapshot than
+  // what we have cached (and we aren't actively streaming), adopt it.
   useEffect(() => {
-    agentIdRef.current = agentId;
-  }, [agentId]);
+    if (store.activeRun) return; // never clobber a live stream
+    if (initialMessages.length > store.messages.length) {
+      store.messages = initialMessages;
+      store.agentId = agentId;
+      notify(store);
+    }
+  }, [initialMessages, agentId, store]);
 
-  const patchMessage = useCallback(
-    (id: string, patch: Partial<Extract<CursorHydratedMessage, { kind: "assistant" }>>) => {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === id && m.kind === "assistant" ? { ...m, ...patch } : m)),
-      );
-    },
-    [],
-  );
-
-  const streamRun = useCallback(
-    async (streamAgentId: string, runId: string, assistantId: string) => {
-      const controller = new AbortController();
-      activeRunRef.current = { agentId: streamAgentId, runId, abort: controller };
-      setIsRunning(true);
-      try {
-        for await (const event of readCursorStream(streamAgentId, runId, controller.signal)) {
-          if (event.type === "delta") {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId && m.kind === "assistant"
-                  ? { ...m, content: m.content + event.text }
-                  : m,
-              ),
-            );
-          } else if (event.type === "done") {
-            patchMessage(assistantId, {
-              content: event.text,
-              status: "complete",
-              usage: event.usage as CursorRunUsage | null,
-            });
-            return;
-          } else if (event.type === "error") {
-            patchMessage(assistantId, { status: "error", errorMessage: event.message });
-            return;
-          }
-        }
-      } catch (error) {
-        if (controller.signal.aborted) {
-          patchMessage(assistantId, { status: "cancelled" });
-        } else {
-          patchMessage(assistantId, {
-            status: "error",
-            errorMessage: error instanceof Error ? error.message : "Stream failed",
-          });
-        }
-      } finally {
-        if (activeRunRef.current?.runId === runId) activeRunRef.current = null;
-        setIsRunning(false);
-      }
-    },
-    [patchMessage],
-  );
-
-  // Auto-resume an in-flight run on mount
+  // Auto-resume an in-flight run on mount (when the server told us one is
+  // running and we don't already have a stream attached locally).
   useEffect(() => {
     if (!liveRunId || !agentId) return;
+    if (store.activeRun) return;
     const assistantId = `asst-${liveRunId}`;
-    // Only attach if we have a placeholder for it and no stream already running
-    const hasPlaceholder = initialMessages.some((m) => m.id === assistantId);
-    if (!hasPlaceholder || activeRunRef.current) return;
-    void streamRun(agentId, liveRunId, assistantId);
-    return () => {
-      activeRunRef.current?.abort.abort();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadId]);
+    const hasPlaceholder = store.messages.some((m) => m.id === assistantId);
+    if (!hasPlaceholder) return;
+    void runStreamLoop(store, agentId, liveRunId, assistantId);
+    // Intentionally do NOT abort on unmount — the stream should keep going
+    // while the user is on another thread.
+  }, [liveRunId, agentId, store]);
 
   const onNew = useCallback(
     async (message: AppendMessage) => {
@@ -149,8 +224,8 @@ export function useCursorRuntime({
       const tempUserId = `user-tmp-${Date.now()}`;
       const tempAssistantId = `asst-tmp-${Date.now()}`;
       const now = new Date().toISOString();
-      setMessages((prev) => [
-        ...prev,
+      store.messages = [
+        ...store.messages,
         {
           kind: "user",
           id: tempUserId,
@@ -166,48 +241,52 @@ export function useCursorRuntime({
           status: "running",
           createdAt: now,
         },
-      ]);
-      setIsRunning(true);
+      ];
+      store.isRunning = true;
+      notify(store);
 
       let started: Awaited<ReturnType<typeof send>>;
       try {
         started = await send({ data: { threadId, text } });
       } catch (error) {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === tempAssistantId && m.kind === "assistant"
-              ? {
-                  ...m,
-                  status: "error",
-                  errorMessage: error instanceof Error ? error.message : "Cursor request failed",
-                }
-              : m,
-          ),
+        store.messages = store.messages.map((m) =>
+          m.id === tempAssistantId && m.kind === "assistant"
+            ? {
+                ...m,
+                status: "error",
+                errorMessage: error instanceof Error ? error.message : "Cursor request failed",
+              }
+            : m,
         );
-        setIsRunning(false);
+        store.isRunning = false;
+        notify(store);
         return;
       }
 
       const permanentUserId = `user-${started.promptId}`;
       const permanentAssistantId = `asst-${started.cursorRunId}`;
-      agentIdRef.current = started.cursorAgentId;
-      setMessages((prev) =>
-        prev.map((m) => {
-          if (m.id === tempUserId)
-            return { ...m, id: permanentUserId, cursor_run_id: started.cursorRunId };
-          if (m.id === tempAssistantId)
-            return { ...m, id: permanentAssistantId, cursor_run_id: started.cursorRunId };
-          return m;
-        }),
-      );
+      store.agentId = started.cursorAgentId;
+      store.messages = store.messages.map((m) => {
+        if (m.id === tempUserId)
+          return { ...m, id: permanentUserId, cursor_run_id: started.cursorRunId };
+        if (m.id === tempAssistantId)
+          return { ...m, id: permanentAssistantId, cursor_run_id: started.cursorRunId };
+        return m;
+      });
+      notify(store);
 
-      await streamRun(started.cursorAgentId, started.cursorRunId, permanentAssistantId);
+      await runStreamLoop(
+        store,
+        started.cursorAgentId,
+        started.cursorRunId,
+        permanentAssistantId,
+      );
     },
-    [send, streamRun, threadId],
+    [send, store, threadId],
   );
 
   const onCancel = useCallback(async () => {
-    const active = activeRunRef.current;
+    const active = store.activeRun;
     if (!active) return;
     active.abort.abort();
     try {
@@ -217,15 +296,19 @@ export function useCursorRuntime({
     } catch {
       // already terminal — fine
     }
-  }, [cancel]);
+  }, [cancel, store]);
 
-  const replaceMessages = useCallback((next: readonly CursorHydratedMessage[]) => {
-    setMessages([...next]);
-  }, []);
+  const setMessages = useCallback(
+    (next: readonly CursorHydratedMessage[]) => {
+      store.messages = [...next];
+      notify(store);
+    },
+    [store],
+  );
 
   return useExternalStoreRuntime<CursorHydratedMessage>({
     messages,
-    setMessages: replaceMessages,
+    setMessages,
     isRunning,
     convertMessage,
     onNew,
