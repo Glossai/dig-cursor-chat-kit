@@ -1,5 +1,5 @@
 import { ExternalLink } from "lucide-react";
-import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { AssistantRuntimeProvider, useThread } from "@assistant-ui/react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import type { CursorThreadHydrated } from "@/lib/cursor/types";
 import { CursorThreadSidebar } from "./CursorThreadSidebar";
@@ -50,25 +50,47 @@ function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatP
             </div>
             <div className="flex items-center gap-2">
               {thread.cursor_agent_id && (
-                <a
-                  href={`https://cursor.com/agents/${thread.cursor_agent_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground/80 shadow-sm transition hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
-                >
-                  <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_currentColor]" />
-                  Open in Cursor
-                  <ExternalLink className="size-3 opacity-60 transition group-hover:opacity-100" />
-                </a>
+                <OpenInCursorLink agentId={thread.cursor_agent_id} />
               )}
-              <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-secondary-foreground">
-                Cloud agent
-              </span>
             </div>
           </header>
           <CursorThread />
         </SidebarInset>
       </SidebarProvider>
     </AssistantRuntimeProvider>
+  );
+}
+
+/**
+ * Status dot reflects the live thread state:
+ *   yellow (pulsing) — a run is in progress / awaiting
+ *   red               — last assistant message ended in error
+ *   green             — idle / last run completed cleanly
+ */
+function OpenInCursorLink({ agentId }: { agentId: string }) {
+  const tone = useThread((t) => {
+    if (t.isRunning) return "pending" as const;
+    const last = [...t.messages].reverse().find((m) => m.role === "assistant");
+    if (last?.status?.type === "incomplete" && last.status.reason === "error")
+      return "error" as const;
+    return "ok" as const;
+  });
+  const dotClass =
+    tone === "pending"
+      ? "bg-amber-400 shadow-[0_0_8px_currentColor] animate-pulse"
+      : tone === "error"
+        ? "bg-red-500 shadow-[0_0_8px_currentColor]"
+        : "bg-emerald-500 shadow-[0_0_6px_currentColor]";
+  return (
+    <a
+      href={`https://cursor.com/agents/${agentId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground/80 shadow-sm transition hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+    >
+      <span className={`size-1.5 rounded-full ${dotClass}`} />
+      Open in Cursor
+      <ExternalLink className="size-3 opacity-60 transition group-hover:opacity-100" />
+    </a>
   );
 }
