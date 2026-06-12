@@ -1,9 +1,38 @@
-// Adapter interfaces the kit will depend on. Phase 1 only declares the shapes;
-// the project wires concrete Supabase clients on its side. Phase 2 of the
-// extraction (see docs/cursor-chat-kit-architecture.md) replaces the direct
-// `@/integrations/supabase/*` imports in the project shims with these.
+// Adapter interfaces the kit depends on. The kit is auth-agnostic: it never
+// imports project-specific auth middleware. Instead, the host injects a
+// CursorAuthResolver that returns the authenticated user id plus an
+// RLS-scoped DB client. Every kit server handler calls `resolveAuth()` at the
+// top of `.handler()`; the kit never receives `userId` as client input.
 
 import type { CursorRunUsage } from "../types";
+
+/**
+ * Authenticated request context resolved by the host.
+ *
+ * - `userId` MUST be derived server-side from a verified credential
+ *   (cookie/bearer/session). Never accept it from client input.
+ * - `db` is a DB client scoped to the user — RLS enforces row ownership.
+ *   The kit never falls back to a service-role client for user-scoped reads.
+ * - `isAnonymous` lets the kit apply the policy gate uniformly across auth
+ *   providers (Supabase anon JWT, Clerk guest, custom, …).
+ */
+export type CursorAuthContext = {
+  userId: string;
+  db: AuthedDbClientLike;
+  isAnonymous?: boolean;
+};
+
+/**
+ * Host-provided auth resolver. Called inside each server handler. It reads
+ * the request via the host's runtime (e.g. TanStack `getRequest`, cookies,
+ * bearer header) and returns the verified context. Throw to reject the call.
+ */
+export type CursorAuthResolver = () => Promise<CursorAuthContext>;
+
+/** Minimal authenticated DB surface used by chat/thread/message queries. */
+export type AuthedDbClientLike = {
+  from(table: string): unknown;
+};
 
 /** Minimal shape required from a Supabase-compatible admin client. */
 export type AdminClientLike = {
@@ -27,6 +56,12 @@ export type AgentConfig = {
 
 export type AgentConfigResolver = (agentName: string) => AgentConfig | Promise<AgentConfig>;
 
+/** Declarative policy the kit enforces using the resolver's output. */
+export type CursorAuthPolicy = {
+  /** Default: false. When false, isAnonymous=true contexts are rejected. */
+  allowAnonymous?: boolean;
+};
+
 /** Fired once per terminal run; consumers can forward to billing/analytics. */
 export type RunRecordedEvent = {
   userId: string;
@@ -43,3 +78,4 @@ export type RunRecordedEvent = {
 };
 
 export type OnRunRecorded = (event: RunRecordedEvent) => void | Promise<void>;
+
