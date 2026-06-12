@@ -151,3 +151,61 @@ export function CursorThreadSidebar({
     </Sidebar>
   );
 }
+
+/**
+ * Per-thread status dot mirroring the "Open in Cursor" pill:
+ *   active_run_id present → pulsing amber (run in flight)
+ *   last_status === "error" → red
+ *   last_status === "complete" → emerald
+ *   otherwise → muted (idle / never run)
+ *
+ * For the currently open thread, the live runtime overrides DB state so the
+ * dot reacts in real time without waiting for a refetch.
+ */
+function ThreadStatusDot({
+  thread,
+  isActive,
+}: {
+  thread: CursorThreadType;
+  isActive: boolean;
+}) {
+  if (isActive) return <LiveDot fallback={<StaticDot thread={thread} />} />;
+  return <StaticDot thread={thread} />;
+}
+
+function StaticDot({ thread }: { thread: CursorThreadType }) {
+  const tone: "pending" | "error" | "ok" | "idle" = thread.active_run_id
+    ? "pending"
+    : thread.last_status === "error"
+      ? "error"
+      : thread.last_status === "complete"
+        ? "ok"
+        : "idle";
+  return <Dot tone={tone} />;
+}
+
+function LiveDot({ fallback }: { fallback: React.ReactElement }) {
+  const tone = useThread((t) => {
+    if (t.isRunning) return "pending" as const;
+    const last = [...t.messages].reverse().find((m) => m.role === "assistant");
+    if (last?.status?.type === "incomplete" && last.status.reason === "error")
+      return "error" as const;
+    if (last) return "ok" as const;
+    return null;
+  });
+  if (tone === null) return fallback;
+  return <Dot tone={tone} />;
+}
+
+function Dot({ tone }: { tone: "pending" | "error" | "ok" | "idle" }) {
+  const cls =
+    tone === "pending"
+      ? "bg-amber-400 shadow-[0_0_8px_currentColor] animate-pulse"
+      : tone === "error"
+        ? "bg-red-500 shadow-[0_0_6px_currentColor]"
+        : tone === "ok"
+          ? "bg-emerald-500 shadow-[0_0_6px_currentColor]"
+          : "bg-muted-foreground/40";
+  return <span className={`size-1.5 shrink-0 rounded-full ${cls}`} aria-hidden />;
+}
+
