@@ -92,10 +92,28 @@ Companion components shipped alongside:
 | Concern | Mechanism |
 |---|---|
 | Cursor API key, webhook URL, webhook token | Per-agent secrets resolved by an `AgentConfigResolver` (default reads `CURSOR_<AGENT>_{API_KEY,WEBHOOK_URL,WEBHOOK_TOKEN}` env vars) |
-| Supabase user client (RLS-scoped) | `requireSupabaseAuth` middleware injected by the consumer |
-| Supabase admin client (service role) | `getAdminClient` adapter, loaded lazily inside handlers |
+| Authenticated user + RLS-scoped DB client | `CursorAuthResolver` adapter — host returns `{ userId, db, isAnonymous? }` from its own auth (Supabase, Clerk, Better-Auth, custom). The kit never imports `requireSupabaseAuth` or any project middleware. |
+| Anonymous policy | `policy.allowAnonymous` flag on the backend factory; enforced uniformly using the resolver's `isAnonymous` hint |
+| Admin client (service role) | `getAdminClient` adapter, loaded lazily inside handlers — only used for the usage ledger upsert, never for user-scoped reads |
 | Agent → Cursor-agent-id mapping (optional) | `agents` map in the backend factory; otherwise each thread tracks its own `cursor_agent_id` |
 | Billing webhook | `onRunRecorded` callback in the factory |
+
+### Why a `CursorAuthResolver` instead of injected middleware
+
+An earlier draft of this doc proposed passing the host's `requireSupabaseAuth`
+middleware into the factory. That worked but coupled the kit to TanStack
+middleware semantics and to Supabase-shaped context objects (`context.supabase`,
+`context.userId`, `context.claims`). Switching to a plain resolver:
+
+- Makes the kit usable from any server runtime (TanStack server fn, Next route
+  handler, Express, etc.) — the resolver is the only contract.
+- Keeps the trust boundary obvious: `userId` is **never** an input to a kit
+  server fn. It comes from `resolveAuth()` inside `.handler()`, which reads a
+  server-verified credential.
+- Lets the host enforce its own provider rules (rate limits, org scoping,
+  anonymous bans) inside the resolver — kit fns stay unchanged.
+- Eliminates the kit's only remaining project-shaped import.
+
 
 ---
 
@@ -128,7 +146,7 @@ gives us:
 |---|---|---|
 | `cursor.server.ts` | Reads env directly inside every call | Takes `AgentConfig` as a parameter; project wires an `AgentConfigResolver` |
 | `usage.server.ts` | `await import("@/integrations/supabase/client.server")` | Receives `getAdminClient` via factory deps |
-| `chat.functions.ts` | `.middleware([requireSupabaseAuth])` hard-coded | Factory accepts `withAuth` middleware; consumer supplies the project's middleware |
+| `chat.functions.ts` | `.middleware([requireSupabaseAuth])` hard-coded | Each handler opens with `const { userId, db, isAnonymous } = await deps.resolveAuth()`; no middleware import |
 | `stream.$runId.ts` | Imports admin client and project SSE proxy directly | Re-exports a kit-provided `createStreamRouteHandler({ deps })` |
 | React components | Import `@/integrations/supabase/client` for realtime | Receive the browser client via context (`<CursorChatProvider supabase={…}>`) |
 
