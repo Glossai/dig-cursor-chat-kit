@@ -1,3 +1,4 @@
+import { ExternalLink } from "lucide-react";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import type { CursorMessage, CursorThread as CursorThreadType } from "@/lib/cursor/types";
