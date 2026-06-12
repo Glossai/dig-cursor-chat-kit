@@ -31,9 +31,14 @@ function Index() {
           </div>
           <span className="font-semibold">Cursor Cloud Chat</span>
         </div>
-        <Button asChild variant="outline">
-          <Link to="/auth">Sign in</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="ghost">
+            <Link to="/stats">Usage stats</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/auth">Sign in</Link>
+          </Button>
+        </div>
       </nav>
       <section className="mx-auto grid max-w-6xl gap-16 px-6 pb-20 pt-20 lg:grid-cols-[1.15fr_.85fr] lg:pt-28">
         <div>
