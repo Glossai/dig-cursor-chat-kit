@@ -42,11 +42,6 @@ function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatP
               <SidebarTrigger />
               <div className="min-w-0">
                 <h1 className="truncate text-sm font-semibold">{thread.title}</h1>
-                <p className="text-xs text-muted-foreground">
-                  {thread.cursor_agent_id
-                    ? "Connected to persistent agent"
-                    : "Agent starts with your first message"}
-                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
