@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import type { Json } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/api/cursor/stream/$messageId")({
   server: { handlers: { GET: async ({ request, params }) => {
@@ -55,7 +56,7 @@ export const Route = createFileRoute("/api/cursor/stream/$messageId")({
           const usage = accounting ? { inputTokens: accounting.usage.inputTokens, outputTokens: accounting.usage.outputTokens, cacheReadTokens: accounting.usage.cacheReadTokens, cacheWriteTokens: accounting.usage.cacheWriteTokens, totalTokens: accounting.usage.totalTokens, totalCostMicros: accounting.cost.totalCostMicros, costSource: accounting.cost.source } : null;
           const completedAt = new Date().toISOString();
           await supabaseAdmin.from("cursor_messages").update({ content: fullText, status: "complete", completed_at: completedAt }).eq("id", run.assistant_message_id);
-          await supabaseAdmin.from("cursor_runs").update({ status: "finished", finished_at: completedAt, duration_ms: durationMs, last_event_id: lastEventId, input_tokens: accounting?.usage.inputTokens, output_tokens: accounting?.usage.outputTokens, cache_read_tokens: accounting?.usage.cacheReadTokens, cache_write_tokens: accounting?.usage.cacheWriteTokens, total_tokens: accounting?.usage.totalTokens, input_cost_micros: accounting?.cost.inputCostMicros, output_cost_micros: accounting?.cost.outputCostMicros, cache_read_cost_micros: accounting?.cost.cacheReadCostMicros, cache_write_cost_micros: accounting?.cost.cacheWriteCostMicros, total_cost_micros: accounting?.cost.totalCostMicros, cost_source: accounting?.cost.source ?? "unavailable", pricing_version: accounting?.cost.pricingVersion, provider_usage: accounting?.raw, provider_cost: accounting?.cost.providerCost }).eq("id", run.id);
+          await supabaseAdmin.from("cursor_runs").update({ status: "finished", finished_at: completedAt, duration_ms: durationMs, last_event_id: lastEventId, input_tokens: accounting?.usage.inputTokens, output_tokens: accounting?.usage.outputTokens, cache_read_tokens: accounting?.usage.cacheReadTokens, cache_write_tokens: accounting?.usage.cacheWriteTokens, total_tokens: accounting?.usage.totalTokens, input_cost_micros: accounting?.cost.inputCostMicros, output_cost_micros: accounting?.cost.outputCostMicros, cache_read_cost_micros: accounting?.cost.cacheReadCostMicros, cache_write_cost_micros: accounting?.cost.cacheWriteCostMicros, total_cost_micros: accounting?.cost.totalCostMicros, cost_source: accounting?.cost.source ?? "unavailable", pricing_version: accounting?.cost.pricingVersion, provider_usage: accounting?.raw as Json | undefined, provider_cost: accounting?.cost.providerCost as Json | undefined }).eq("id", run.id);
           send({ type: "done", usage });
         } catch (streamError) {
           const message = streamError instanceof Error ? streamError.message : "Cursor stream failed";
