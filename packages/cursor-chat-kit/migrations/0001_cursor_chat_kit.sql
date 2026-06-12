@@ -32,10 +32,10 @@ CREATE TABLE public.cursor_threads (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.cursor_threads TO authenticated;
 GRANT ALL ON public.cursor_threads TO service_role;
 ALTER TABLE public.cursor_threads ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view their cursor threads"   ON public.cursor_threads FOR SELECT TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY "Users can create their cursor threads" ON public.cursor_threads FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their cursor threads" ON public.cursor_threads FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can delete their cursor threads" ON public.cursor_threads FOR DELETE TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their cursor threads"   ON public.cursor_threads FOR SELECT TO authenticated USING (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
+CREATE POLICY "Users can create their cursor threads" ON public.cursor_threads FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
+CREATE POLICY "Users can update their cursor threads" ON public.cursor_threads FOR UPDATE TO authenticated USING (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE) WITH CHECK (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
+CREATE POLICY "Users can delete their cursor threads" ON public.cursor_threads FOR DELETE TO authenticated USING (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
 CREATE INDEX cursor_threads_user_agent_updated_idx ON public.cursor_threads (user_id, agent_name, updated_at DESC);
 CREATE TRIGGER cursor_threads_set_updated_at BEFORE UPDATE ON public.cursor_threads FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
@@ -51,12 +51,14 @@ CREATE TABLE public.cursor_messages (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.cursor_messages TO authenticated;
 GRANT ALL ON public.cursor_messages TO service_role;
 ALTER TABLE public.cursor_messages ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view their cursor messages"   ON public.cursor_messages FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their cursor messages"   ON public.cursor_messages FOR SELECT TO authenticated USING (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
 CREATE POLICY "Users can create their cursor messages" ON public.cursor_messages FOR INSERT TO authenticated WITH CHECK (
-  auth.uid() = user_id AND EXISTS (SELECT 1 FROM public.cursor_threads t WHERE t.id = thread_id AND t.user_id = auth.uid())
+  auth.uid() = user_id
+  AND EXISTS (SELECT 1 FROM public.cursor_threads t WHERE t.id = thread_id AND t.user_id = auth.uid())
+  AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE
 );
-CREATE POLICY "Users can update their cursor messages" ON public.cursor_messages FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can delete their cursor messages" ON public.cursor_messages FOR DELETE TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their cursor messages" ON public.cursor_messages FOR UPDATE TO authenticated USING (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE) WITH CHECK (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
+CREATE POLICY "Users can delete their cursor messages" ON public.cursor_messages FOR DELETE TO authenticated USING (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
 CREATE INDEX cursor_messages_thread_created_idx ON public.cursor_messages (thread_id, created_at, id);
 
 -- usage ledger --------------------------------------------------------------
@@ -87,7 +89,7 @@ GRANT ALL    ON public.cursor_run_usage TO service_role;
 ALTER TABLE public.cursor_run_usage ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their cursor usage"
   ON public.cursor_run_usage FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
 CREATE INDEX cursor_run_usage_user_created_idx  ON public.cursor_run_usage (user_id, created_at DESC);
 CREATE INDEX cursor_run_usage_agent_created_idx ON public.cursor_run_usage (agent_name, created_at DESC);
 CREATE INDEX cursor_run_usage_thread_idx        ON public.cursor_run_usage (thread_id);
