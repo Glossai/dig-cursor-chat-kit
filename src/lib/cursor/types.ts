@@ -7,17 +7,15 @@ export type CursorThread = {
   updated_at: string;
 };
 
-export type CursorMessage = {
+export type CursorUserPromptRow = {
   id: string;
   thread_id: string;
-  role: "user" | "assistant";
+  cursor_run_id: string;
   content: string;
-  status: "pending" | "streaming" | "complete" | "error" | "cancelled";
-  cursor_run_id: string | null;
-  error_message: string | null;
   created_at: string;
-  usage?: CursorRunUsage | null;
 };
+
+export type CursorRunStatus = "running" | "complete" | "error" | "cancelled";
 
 export type CursorRunUsage = {
   inputTokens: number;
@@ -29,7 +27,32 @@ export type CursorRunUsage = {
   costSource: "provider" | "static_table" | "unavailable";
 };
 
+export type CursorHydratedMessage =
+  | {
+      kind: "user";
+      id: string;
+      cursor_run_id: string;
+      content: string;
+      createdAt: string;
+    }
+  | {
+      kind: "assistant";
+      id: string;
+      cursor_run_id: string;
+      content: string;
+      status: CursorRunStatus;
+      errorMessage?: string | null;
+      usage?: CursorRunUsage | null;
+      createdAt: string;
+    };
+
+export type CursorThreadHydrated = {
+  thread: CursorThread;
+  messages: CursorHydratedMessage[];
+  liveRunId: string | null;
+};
+
 export type CursorStreamEvent =
   | { type: "delta"; text: string }
-  | { type: "done"; usage: CursorRunUsage | null }
+  | { type: "done"; text: string; usage: CursorRunUsage | null }
   | { type: "error"; message: string };
