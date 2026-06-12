@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useThread } from "@assistant-ui/react";
-import { MessageSquare, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Home, MessageSquare, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CursorThread as CursorThreadType } from "@/lib/cursor/types";
 import {
@@ -26,7 +26,6 @@ import {
   deleteCursorThread,
   listCursorThreads,
 } from "@/lib/cursor/chat.functions";
-import { supabase } from "@/integrations/supabase/client";
 
 export function CursorThreadSidebar({
   agentName,
@@ -134,18 +133,11 @@ export function CursorThreadSidebar({
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-3">
-        <Button
-          variant="ghost"
-          size={collapsed ? "icon" : "sm"}
-          className="w-full"
-          onClick={async () => {
-            await queryClient.cancelQueries();
-            queryClient.clear();
-            await supabase.auth.signOut();
-            await navigate({ to: "/auth", replace: true });
-          }}
-        >
-          {collapsed ? "↗" : "Sign out"}
+        <Button asChild variant="ghost" size={collapsed ? "icon" : "sm"} className="w-full">
+          <Link to="/">
+            <Home />
+            {!collapsed && "Home"}
+          </Link>
         </Button>
       </SidebarFooter>
     </Sidebar>

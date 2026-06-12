@@ -1,10 +1,15 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
+  ssr: false,
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getUser();
+    if (data.user) throw redirect({ to: "/" });
+  },
   head: () => ({
     meta: [
       { title: "Sign in | Cursor Cloud Chat" },
@@ -31,7 +36,7 @@ function AuthPage() {
         return;
       }
       await router.invalidate();
-      await navigate({ to: "/chat", replace: true });
+      await navigate({ to: "/", replace: true });
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "Authentication failed");
     } finally {

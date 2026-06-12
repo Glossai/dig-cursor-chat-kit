@@ -1,27 +1,34 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, BarChart3, Radio, ShieldCheck } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, BarChart3, LogOut, MessageSquare, Radio, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
-      { title: "Cursor Cloud Chat" },
+      { title: "Home | Cursor Cloud Chat" },
       {
         name: "description",
-        content: "A reusable, traceable chat interface for Cursor Cloud Agents.",
-      },
-      { property: "og:title", content: "Cursor Cloud Chat" },
-      {
-        property: "og:description",
-        content:
-          "Run persistent Cursor Cloud Agent conversations with streaming, history, usage, and cost tracking.",
+        content: "Open a Cursor agent chat or review usage analytics.",
       },
     ],
   }),
-  component: Index,
+  component: Home,
 });
 
-function Index() {
+function Home() {
+  const { user } = Route.useRouteContext();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const signOut = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    await navigate({ to: "/auth", replace: true });
+  };
+
   return (
     <main className="min-h-svh bg-background">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
@@ -31,12 +38,10 @@ function Index() {
           </div>
           <span className="font-semibold">Cursor Cloud Chat</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost">
-            <Link to="/stats">Usage stats</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/auth">Sign in</Link>
+        <div className="flex items-center gap-3">
+          <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
+          <Button variant="ghost" size="sm" onClick={signOut}>
+            <LogOut /> Sign out
           </Button>
         </div>
       </nav>
@@ -54,8 +59,8 @@ function Index() {
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <Link to="/auth">
-                Open test chat <ArrowRight />
+              <Link to="/chat">
+                <MessageSquare /> Open chat <ArrowRight />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
