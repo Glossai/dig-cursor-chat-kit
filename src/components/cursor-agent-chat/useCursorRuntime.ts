@@ -219,9 +219,13 @@ export function useCursorRuntime({
     }
   }, [cancel]);
 
+  const replaceMessages = useCallback((next: readonly CursorHydratedMessage[]) => {
+    setMessages([...next]);
+  }, []);
+
   return useExternalStoreRuntime<CursorHydratedMessage>({
     messages,
-    setMessages,
+    setMessages: replaceMessages,
     isRunning,
     convertMessage,
     onNew,
