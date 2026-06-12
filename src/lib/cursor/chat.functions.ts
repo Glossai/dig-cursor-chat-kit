@@ -18,12 +18,30 @@ export const listCursorThreads = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("cursor_threads")
-      .select("id, agent_name, cursor_agent_id, title, created_at, updated_at")
+      .select("id, agent_name, cursor_agent_id, title, created_at, updated_at, active_run_id")
       .eq("agent_name", data.agentName)
       .order("updated_at", { ascending: false });
     if (error) throw new Error("Could not load conversations");
-    return rows as CursorThread[];
+    const threads = (rows ?? []) as Array<CursorThread & { active_run_id: string | null }>;
+    const ids = threads.map((t) => t.id);
+    const lastByThread = new Map<string, CursorThread["last_status"]>();
+    if (ids.length > 0) {
+      const { data: usage } = await context.supabase
+        .from("cursor_run_usage")
+        .select("thread_id, status, created_at")
+        .in("thread_id", ids)
+        .order("created_at", { ascending: false });
+      for (const row of usage ?? []) {
+        if (!row.thread_id || lastByThread.has(row.thread_id)) continue;
+        lastByThread.set(row.thread_id, row.status as CursorThread["last_status"]);
+      }
+    }
+    return threads.map((t) => ({
+      ...t,
+      last_status: lastByThread.get(t.id) ?? null,
+    })) as CursorThread[];
   });
+
 
 export const createCursorThread = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
