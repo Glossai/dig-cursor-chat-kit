@@ -8,7 +8,7 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Sign in | Cursor Cloud Chat" },
-      { name: "description", content: "Sign in or continue as a guest to use Cursor Cloud Chat." },
+      { name: "description", content: "Sign in or create an account to use Cursor Cloud Chat." },
     ],
   }),
   component: AuthPage,
