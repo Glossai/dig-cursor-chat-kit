@@ -1,8 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useThread } from "@assistant-ui/react";
 import { MessageSquare, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { CursorThread as CursorThreadType } from "@/lib/cursor/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
