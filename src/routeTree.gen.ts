@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat.index'
 import { Route as AuthenticatedChatThreadIdRouteImport } from './routes/_authenticated/chat.$threadId'
+import { Route as ApiCursorStreamRunIdRouteImport } from './routes/api/cursor/stream.$runId'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -52,6 +53,11 @@ const AuthenticatedChatThreadIdRoute =
     path: '/$threadId',
     getParentRoute: () => AuthenticatedChatRoute,
   } as any)
+const ApiCursorStreamRunIdRoute = ApiCursorStreamRunIdRouteImport.update({
+  id: '/api/cursor/stream/$runId',
+  path: '/api/cursor/stream/$runId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof AuthenticatedChatRouteWithChildren
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
+  '/api/cursor/stream/$runId': typeof ApiCursorStreamRunIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/chat': typeof AuthenticatedChatIndexRoute
+  '/api/cursor/stream/$runId': typeof ApiCursorStreamRunIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/_authenticated/chat': typeof AuthenticatedChatRouteWithChildren
   '/_authenticated/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
+  '/api/cursor/stream/$runId': typeof ApiCursorStreamRunIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,8 +96,15 @@ export interface FileRouteTypes {
     | '/chat'
     | '/chat/$threadId'
     | '/chat/'
+    | '/api/cursor/stream/$runId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/reset-password' | '/chat/$threadId' | '/chat'
+  to:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/chat/$threadId'
+    | '/chat'
+    | '/api/cursor/stream/$runId'
   id:
     | '__root__'
     | '/'
@@ -98,6 +114,7 @@ export interface FileRouteTypes {
     | '/_authenticated/chat'
     | '/_authenticated/chat/$threadId'
     | '/_authenticated/chat/'
+    | '/api/cursor/stream/$runId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -105,6 +122,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiCursorStreamRunIdRoute: typeof ApiCursorStreamRunIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -158,6 +176,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatThreadIdRouteImport
       parentRoute: typeof AuthenticatedChatRoute
     }
+    '/api/cursor/stream/$runId': {
+      id: '/api/cursor/stream/$runId'
+      path: '/api/cursor/stream/$runId'
+      fullPath: '/api/cursor/stream/$runId'
+      preLoaderRoute: typeof ApiCursorStreamRunIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -190,7 +215,18 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiCursorStreamRunIdRoute: ApiCursorStreamRunIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
