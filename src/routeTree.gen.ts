@@ -10,33 +10,44 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiCursorStreamMessageIdRouteImport } from './routes/api/cursor/stream.$messageId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCursorStreamMessageIdRoute =
+  ApiCursorStreamMessageIdRouteImport.update({
+    id: '/api/cursor/stream/$messageId',
+    path: '/api/cursor/stream/$messageId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/cursor/stream/$messageId': typeof ApiCursorStreamMessageIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/cursor/stream/$messageId': typeof ApiCursorStreamMessageIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/cursor/stream/$messageId': typeof ApiCursorStreamMessageIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/cursor/stream/$messageId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/cursor/stream/$messageId'
+  id: '__root__' | '/' | '/api/cursor/stream/$messageId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiCursorStreamMessageIdRoute: typeof ApiCursorStreamMessageIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +59,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cursor/stream/$messageId': {
+      id: '/api/cursor/stream/$messageId'
+      path: '/api/cursor/stream/$messageId'
+      fullPath: '/api/cursor/stream/$messageId'
+      preLoaderRoute: typeof ApiCursorStreamMessageIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiCursorStreamMessageIdRoute: ApiCursorStreamMessageIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
