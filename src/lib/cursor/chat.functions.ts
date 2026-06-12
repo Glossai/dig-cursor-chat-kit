@@ -126,6 +126,7 @@ export const getCursorThread = createServerFn({ method: "GET" })
 
     const messages: CursorHydratedMessage[] = [];
     let liveRunId: string | null = null;
+    const backfillRows: Array<Parameters<typeof import("./usage.server").recordRunUsage>[0]> = [];
 
     for (const run of runs) {
       const prompt = promptByRunId.get(run.id);
@@ -176,6 +177,30 @@ export const getCursorThread = createServerFn({ method: "GET" })
         usage,
         createdAt: detail?.updatedAt ?? run.updatedAt ?? run.createdAt,
       });
+
+      // Queue terminal runs for ledger backfill (upsert is idempotent so
+      // re-hydrations are cheap and never double-count).
+      if (status !== "running") {
+        backfillRows.push({
+          userId: context.userId,
+          threadId: thread.id,
+          agentName: thread.agent_name,
+          cursorAgentId: thread.cursor_agent_id!,
+          cursorRunId: run.id,
+          status,
+          model: detail?.model ?? null,
+          usage,
+          durationMs: detail?.durationMs ?? null,
+          startedAt: detail?.createdAt ?? run.createdAt ?? null,
+          finishedAt: detail?.updatedAt ?? run.updatedAt ?? null,
+        });
+      }
+    }
+
+    if (backfillRows.length > 0) {
+      const { recordRunUsage } = await import("./usage.server");
+      // Fire-and-forget — hydration latency stays low; upsert tolerates retries.
+      void Promise.all(backfillRows.map((r) => recordRunUsage(r)));
     }
 
     return {
