@@ -5,8 +5,12 @@ export async function* readCursorStream(messageId: string, signal: AbortSignal) 
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Please sign in to continue");
-  const response = await fetch(`/api/cursor/stream/${encodeURIComponent(messageId)}`, { headers: { Authorization: `Bearer ${token}` }, signal });
-  if (!response.ok || !response.body) throw new Error(await response.text() || "Could not open Cursor stream");
+  const response = await fetch(`/api/cursor/stream/${encodeURIComponent(messageId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal,
+  });
+  if (!response.ok || !response.body)
+    throw new Error((await response.text()) || "Could not open Cursor stream");
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
