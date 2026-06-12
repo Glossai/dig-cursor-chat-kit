@@ -9,6 +9,7 @@ import {
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
+import { HighlightedCode } from "./HighlightedCode";
 
 
 
@@ -70,12 +71,11 @@ function AssistantMarkdown() {
               </code>
             );
           }
+          const cleaned = text.replace(/\n$/, "");
           return (
             <div className="my-4 overflow-hidden rounded-lg">
-              <CodeHeader language={match[1]} code={text.replace(/\n$/, "")} />
-              <pre className="overflow-x-auto rounded-b-lg border border-border bg-muted/40 p-4 text-sm">
-                <code className={className}>{children}</code>
-              </pre>
+              <CodeHeader language={match[1]} code={cleaned} />
+              <HighlightedCode code={cleaned} language={match[1]} />
             </div>
           );
         },
