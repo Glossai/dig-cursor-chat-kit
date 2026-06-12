@@ -52,10 +52,15 @@ function Index() {
             Persistent threads, live SSE responses, per-user traceability, token usage, and
             explainable cost accounting—wrapped in one reusable component.
           </p>
-          <div className="mt-9 flex gap-3">
+          <div className="mt-9 flex flex-wrap gap-3">
             <Button asChild size="lg">
               <Link to="/auth">
                 Open test chat <ArrowRight />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link to="/stats">
+                <BarChart3 /> See usage stats
               </Link>
             </Button>
           </div>
