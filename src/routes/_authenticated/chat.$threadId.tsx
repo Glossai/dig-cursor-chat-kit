@@ -22,5 +22,5 @@ export const Route = createFileRoute("/_authenticated/chat/$threadId")({
 
 function ChatPage() {
   const data = Route.useLoaderData();
-  return <CursorAgentChat agentName={AGENT_NAME} thread={data.thread} messages={data.messages} />;
+  return <CursorAgentChat agentName={AGENT_NAME} data={data} />;
 }

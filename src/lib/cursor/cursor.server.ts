@@ -93,6 +93,65 @@ export async function createFollowupRun(agentName: string, agentId: string, prom
   return cursorIdSchema.parse(run.id);
 }
 
+const runStatusSchema = z.enum([
+  "CREATING",
+  "RUNNING",
+  "FINISHED",
+  "ERROR",
+  "CANCELLED",
+  "EXPIRED",
+]);
+export type CursorRunStatusRaw = z.infer<typeof runStatusSchema>;
+
+const runItemSchema = z.object({
+  id: z.string(),
+  status: runStatusSchema,
+  createdAt: z.string(),
+  updatedAt: z.string().optional(),
+});
+
+export type CursorRunSummary = z.infer<typeof runItemSchema>;
+
+export async function listAgentRuns(agentName: string, agentId: string) {
+  const config = getCursorConfig(agentName);
+  const all: CursorRunSummary[] = [];
+  let cursor: string | undefined;
+  // Cap at a few pages so a huge history doesn't hang the loader
+  for (let page = 0; page < 5; page += 1) {
+    const url = new URL(`${config.apiBaseUrl}/v1/agents/${encodeURIComponent(agentId)}/runs`);
+    url.searchParams.set("limit", "100");
+    if (cursor) url.searchParams.set("cursor", cursor);
+    const body = await checkedJson(url.toString(), { headers: apiHeaders(config.apiKey) });
+    const items = z.array(runItemSchema).parse(body.items ?? []);
+    all.push(...items);
+    const next = typeof body.nextCursor === "string" ? body.nextCursor : null;
+    if (!next) break;
+    cursor = next;
+  }
+  return all;
+}
+
+const runDetailSchema = z.object({
+  id: z.string(),
+  status: runStatusSchema,
+  createdAt: z.string(),
+  updatedAt: z.string().optional(),
+  result: z.string().optional(),
+  durationMs: z.number().optional(),
+});
+
+export type CursorRunDetail = z.infer<typeof runDetailSchema>;
+
+export async function getAgentRun(agentName: string, agentId: string, runId: string) {
+  cursorIdSchema.parse(runId);
+  const config = getCursorConfig(agentName);
+  const body = await checkedJson(
+    `${config.apiBaseUrl}/v1/agents/${encodeURIComponent(agentId)}/runs/${encodeURIComponent(runId)}`,
+    { headers: apiHeaders(config.apiKey) },
+  );
+  return runDetailSchema.parse(body);
+}
+
 export function openRunStream(
   agentName: string,
   agentId: string,
@@ -118,6 +177,33 @@ export async function cancelCursorRun(agentName: string, agentId: string, runId:
     `${config.apiBaseUrl}/v1/agents/${encodeURIComponent(agentId)}/runs/${encodeURIComponent(runId)}/cancel`,
     { method: "POST", headers: apiHeaders(config.apiKey) },
   );
+}
+
+export async function fetchAgentUsageAll(agentName: string, agentId: string) {
+  const config = getCursorConfig(agentName);
+  const body = await checkedJson(
+    `${config.apiBaseUrl}/v1/agents/${encodeURIComponent(agentId)}/usage`,
+    { headers: apiHeaders(config.apiKey) },
+  );
+  const parsed = z
+    .object({
+      runs: z
+        .array(
+          z.object({
+            id: z.string(),
+            usage: z.object({
+              inputTokens: z.number().nonnegative().default(0),
+              outputTokens: z.number().nonnegative().default(0),
+              cacheReadTokens: z.number().nonnegative().default(0),
+              cacheWriteTokens: z.number().nonnegative().default(0),
+              totalTokens: z.number().nonnegative().default(0),
+            }),
+          }),
+        )
+        .default([]),
+    })
+    .parse(body);
+  return new Map(parsed.runs.map((r) => [r.id, r.usage as TokenUsage]));
 }
 
 export async function fetchRunUsage(
