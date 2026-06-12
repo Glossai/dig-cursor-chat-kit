@@ -2,13 +2,11 @@
 
 Reusable Cursor background-agent chat for Lovable projects.
 
-**Status: Phase 1 skeleton.** Pure modules have been extracted from
-`src/lib/cursor/*`. Adapter-shaped server code, React components, and the
-`createCursorChatBackend` factory are still wired in the host project —
-see `docs/cursor-chat-kit-architecture.md` for the full plan and Phase 2
-extraction steps.
+**Status: v0.1 release candidate.** The package includes domain types,
+Cursor API/pricing/usage logic, an auth-agnostic backend factory, an injectable
+stream handler, React chat UI, and the database migration.
 
-## What's in here today
+## Public entry points
 
 ```
 packages/cursor-chat-kit/
@@ -18,23 +16,19 @@ packages/cursor-chat-kit/
 └── src/
     ├── index.ts                      # public type re-exports
     ├── types.ts                      # CursorThread, CursorRunUsage, …
-    └── server/
-        ├── index.ts
-        ├── adapters.ts               # interfaces consumers implement
-        ├── pricing.ts                # pure cost resolver + static table
-        ├── cursor-api.ts             # Cursor REST/SSE client (config injected)
-        └── usage.ts                  # cursor_run_usage upsert (admin injected)
+    ├── react/                        # provider + reusable chat surface
+    └── server/                       # backend factory, stream handler, API clients
 ```
 
-The host project's `src/lib/cursor/*` files are thin shims that re-export
-from this package and inject project-local Supabase clients.
+- `@lovable/cursor-chat-kit` and `/types` — pure domain types.
+- `@lovable/cursor-chat-kit/server` — `createCursorChatBackend`,
+  `createCursorStreamHandler`, adapters, Cursor API and usage helpers.
+- `@lovable/cursor-chat-kit/react` — `CursorChatProvider` and
+  `CursorAgentChat`.
 
-## Not extracted yet (Phase 2)
+## Consumer responsibilities
 
-- `chat.functions.ts` — TanStack `createServerFn` + Supabase auth middleware
-- `stream.$runId.ts` — SSE proxy route
-- React components (`CursorAgentChat`, `CursorThread`, sidebar, runtime hook)
-- Install CLI / Lovable Skill
-
-See `docs/cursor-chat-kit-architecture.md` for the rationale and intended
-adapter shape.
+The consuming app owns authentication, database clients, route navigation,
+server-function wrappers, Cursor secrets, and migration application. The kit
+receives these through adapters and never imports project-local auth or `@/`
+paths. See the `cursor-chat-kit` Lovable skill for the installation recipe.
