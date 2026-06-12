@@ -1,0 +1,19 @@
+{
+  "name": "@lovable/cursor-chat-kit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Reusable Cursor background-agent chat for Lovable projects (UI + server kit + migrations). Phase 1 skeleton — not yet published.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server/index.ts",
+    "./react": "./src/react/index.ts",
+    "./types": "./src/types.ts"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.0.0 || ^4.0.0"
+  }
+}
