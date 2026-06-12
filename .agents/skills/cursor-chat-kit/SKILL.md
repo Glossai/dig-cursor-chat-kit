@@ -109,9 +109,21 @@ the wiring file is written once.
 
 ## Things to get right
 
+- The kit MUST stay auth-agnostic. Never add `requireSupabaseAuth` or any
+  other project middleware as a dependency of the kit; everything flows
+  through `resolveAuth`.
+- `userId` is never a kit server-fn input — only an output of `resolveAuth()`.
+  Reject any PR that adds `userId` to an `inputValidator`.
 - Never import from `@/...` inside the kit. All project-specific values flow
   through the factory.
 - Read `process.env.*` inside `.handler()` bodies, not at module scope, or
+  TanStack server functions will see `undefined` at call time.
+- Keep the SSE proxy under `src/routes/api/` (not `/api/public/`) unless the
+  consumer explicitly wants unauthenticated access — Cursor responses can
+  leak run content.
+- After applying the migration, verify every new `public.cursor_*` table has
+  `GRANT`s to `authenticated` and `service_role`. The kit's migration
+  includes them; if you edit the SQL, keep them.
   TanStack server functions will see `undefined` at call time.
 - Keep the SSE proxy under `src/routes/api/` (not `/api/public/`) unless the
   consumer explicitly wants unauthenticated access — Cursor responses can
