@@ -36,7 +36,7 @@ function AuthPage() {
         return;
       }
       await router.invalidate();
-      await navigate({ to: "/chat", replace: true });
+      await navigate({ to: "/", replace: true });
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "Authentication failed");
     } finally {
