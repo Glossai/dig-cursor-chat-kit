@@ -8,7 +8,7 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Sign in | Cursor Cloud Chat" },
-      { name: "description", content: "Sign in or continue as a guest to use Cursor Cloud Chat." },
+      { name: "description", content: "Sign in or create an account to use Cursor Cloud Chat." },
     ],
   }),
   component: AuthPage,
@@ -100,19 +100,6 @@ function AuthPage() {
             Create account
           </Button>
         </form>
-        <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="h-px flex-1 bg-border" />
-          or
-          <span className="h-px flex-1 bg-border" />
-        </div>
-        <Button
-          className="w-full"
-          disabled={busy}
-          variant="secondary"
-          onClick={() => void finish(() => supabase.auth.signInAnonymously())}
-        >
-          Continue as guest
-        </Button>
         <div className="mt-5 flex justify-center">
           <Button
             variant="link"
