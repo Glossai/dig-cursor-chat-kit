@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useThread } from "@assistant-ui/react";
-import { MessageSquare, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Home, MessageSquare, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CursorThread as CursorThreadType } from "@/lib/cursor/types";
 import {
@@ -26,7 +26,6 @@ import {
   deleteCursorThread,
   listCursorThreads,
 } from "@/lib/cursor/chat.functions";
-import { supabase } from "@/integrations/supabase/client";
 
 export function CursorThreadSidebar({
   agentName,
