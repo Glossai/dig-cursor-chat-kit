@@ -62,13 +62,38 @@ the wiring file is written once.
    `CURSOR_WEBHOOK_TOKEN` if the project will receive Cursor webhooks.
 
 4. **Scaffold the wiring file.** Create `src/lib/cursor/backend.ts` that
-   imports `createCursorChatBackend` from the kit and injects:
+   imports `createCursorChatBackend` from the kit and injects four adapters:
+
+   - `resolveAuth` — **the auth seam.** The kit is auth-agnostic; it never
+     imports `requireSupabaseAuth` or any project middleware. The host
+     resolver returns `{ userId, db, isAnonymous? }` where `db` is an
+     RLS-scoped client. For a Lovable Cloud (Supabase) project:
+     ```ts
+     import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
+
+     // Wrap the host's middleware once per server-fn call. Each kit handler
+     // runs `await resolveAuth()` at the top of `.handler()`, so userId is
+     // server-derived and never accepted as client input.
+     resolveAuth: async () => {
+       const ctx = await requireSupabaseAuth.resolve();
+       return {
+         userId: ctx.userId,
+         db: ctx.supabase,
+         isAnonymous: ctx.claims?.is_anonymous === true,
+       };
+     },
+     policy: { allowAnonymous: false },
+     ```
+     For Clerk / Auth.js / Better-Auth / custom JWT: return the same shape
+     from that provider's session reader. Nothing else changes.
    - `getAdminClient: async () => (await import('@/integrations/supabase/client.server')).supabaseAdmin`
+     — used only for the usage-ledger upsert.
    - `cursor: { apiKey: process.env.CURSOR_API_KEY!, webhookUrl: ... }`
    - `agents: { '<agentKey>': { cursorAgentId, model } }`
 
    Export the resulting `chatFunctions` and re-export them from
    `src/lib/cursor/chat.functions.ts` so TanStack picks them up as server fns.
+
 
 5. **Add the SSE proxy route** at `src/routes/api/cursor/stream.$runId.ts`,
    delegating to the kit's proxy handler with the wired backend.
