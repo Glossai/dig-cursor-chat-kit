@@ -16,7 +16,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat.index'
 import { Route as AuthenticatedChatThreadIdRouteImport } from './routes/_authenticated/chat.$threadId'
-import { Route as ApiCursorStreamMessageIdRouteImport } from './routes/api/cursor/stream.$messageId'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -53,12 +52,6 @@ const AuthenticatedChatThreadIdRoute =
     path: '/$threadId',
     getParentRoute: () => AuthenticatedChatRoute,
   } as any)
-const ApiCursorStreamMessageIdRoute =
-  ApiCursorStreamMessageIdRouteImport.update({
-    id: '/api/cursor/stream/$messageId',
-    path: '/api/cursor/stream/$messageId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -67,7 +60,6 @@ export interface FileRoutesByFullPath {
   '/chat': typeof AuthenticatedChatRouteWithChildren
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
-  '/api/cursor/stream/$messageId': typeof ApiCursorStreamMessageIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -75,7 +67,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/chat': typeof AuthenticatedChatIndexRoute
-  '/api/cursor/stream/$messageId': typeof ApiCursorStreamMessageIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,7 +77,6 @@ export interface FileRoutesById {
   '/_authenticated/chat': typeof AuthenticatedChatRouteWithChildren
   '/_authenticated/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
-  '/api/cursor/stream/$messageId': typeof ApiCursorStreamMessageIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,15 +87,8 @@ export interface FileRouteTypes {
     | '/chat'
     | '/chat/$threadId'
     | '/chat/'
-    | '/api/cursor/stream/$messageId'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/auth'
-    | '/reset-password'
-    | '/chat/$threadId'
-    | '/chat'
-    | '/api/cursor/stream/$messageId'
+  to: '/' | '/auth' | '/reset-password' | '/chat/$threadId' | '/chat'
   id:
     | '__root__'
     | '/'
@@ -115,7 +98,6 @@ export interface FileRouteTypes {
     | '/_authenticated/chat'
     | '/_authenticated/chat/$threadId'
     | '/_authenticated/chat/'
-    | '/api/cursor/stream/$messageId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -123,7 +105,6 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  ApiCursorStreamMessageIdRoute: typeof ApiCursorStreamMessageIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -177,13 +158,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatThreadIdRouteImport
       parentRoute: typeof AuthenticatedChatRoute
     }
-    '/api/cursor/stream/$messageId': {
-      id: '/api/cursor/stream/$messageId'
-      path: '/api/cursor/stream/$messageId'
-      fullPath: '/api/cursor/stream/$messageId'
-      preLoaderRoute: typeof ApiCursorStreamMessageIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -216,8 +190,17 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  ApiCursorStreamMessageIdRoute: ApiCursorStreamMessageIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
