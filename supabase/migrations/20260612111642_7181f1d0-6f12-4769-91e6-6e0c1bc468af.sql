@@ -1,0 +1,1 @@
+ALTER TABLE public.cursor_threads ADD COLUMN active_run_id text;

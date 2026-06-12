@@ -51,6 +51,7 @@ export type Database = {
       }
       cursor_threads: {
         Row: {
+          active_run_id: string | null
           agent_name: string
           created_at: string
           cursor_agent_id: string | null
@@ -60,6 +61,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active_run_id?: string | null
           agent_name: string
           created_at?: string
           cursor_agent_id?: string | null
@@ -69,6 +71,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active_run_id?: string | null
           agent_name?: string
           created_at?: string
           cursor_agent_id?: string | null
