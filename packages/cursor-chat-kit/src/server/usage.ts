@@ -60,7 +60,7 @@ export async function recordRunUsage(deps: RecordRunUsageDeps, input: RecordRunU
     });
     return;
   }
-  if (deps.onRunRecorded && input.status !== "running") {
+  if (deps.onRunRecorded) {
     try {
       await deps.onRunRecorded({ ...input, status: input.status });
     } catch (err) {
