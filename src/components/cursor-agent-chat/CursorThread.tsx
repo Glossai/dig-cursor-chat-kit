@@ -33,8 +33,8 @@ export function CursorThread() {
           <ComposerPrimitive.Root className="rounded-2xl border bg-card p-2 shadow-lg">
             <ComposerPrimitive.Input autoFocus placeholder="Give Cursor a coding task…" className="min-h-20 w-full resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground" />
             <div className="flex justify-end px-1 pb-1">
-              <ComposerPrimitive.If running><ComposerPrimitive.Cancel asChild><Button size="icon" variant="secondary" aria-label="Stop run"><Square className="fill-current" /></Button></ComposerPrimitive.Cancel></ComposerPrimitive.If>
-              <ComposerPrimitive.If running={false}><ComposerPrimitive.Send asChild><Button size="icon" aria-label="Send message"><Send /></Button></ComposerPrimitive.Send></ComposerPrimitive.If>
+              <ThreadPrimitive.If running><ComposerPrimitive.Cancel asChild><Button size="icon" variant="secondary" aria-label="Stop run"><Square className="fill-current" /></Button></ComposerPrimitive.Cancel></ThreadPrimitive.If>
+              <ThreadPrimitive.If running={false}><ComposerPrimitive.Send asChild><Button size="icon" aria-label="Send message"><Send /></Button></ComposerPrimitive.Send></ThreadPrimitive.If>
             </div>
           </ComposerPrimitive.Root>
           <p className="mt-2 text-center text-[11px] text-muted-foreground">Runs execute in Cursor Cloud. Verify generated changes before merging.</p>

@@ -32,10 +32,10 @@ export function useCursorRuntime(threadId: string, messages: CursorMessage[]) {
         for await (const event of readCursorStream(started.assistantMessageId, abortSignal)) {
           if (event.type === "delta") { responseText += event.text; yield { content: [{ type: "text", text: responseText }] }; }
           if (event.type === "error") throw new Error(event.message);
-          if (event.type === "done") return { content: [{ type: "text", text: responseText }], metadata: event.usage ? { custom: { usage: event.usage } } : undefined };
+          if (event.type === "done") { yield { content: [{ type: "text", text: responseText }], metadata: event.usage ? { custom: { usage: event.usage } } : undefined }; return; }
         }
       } finally { abortSignal.removeEventListener("abort", onAbort); }
-      return { content: [{ type: "text", text: responseText }] };
+      return;
     },
   }), [cancel, send, threadId]);
 
