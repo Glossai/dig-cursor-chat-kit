@@ -49,6 +49,80 @@ export type Database = {
           },
         ]
       }
+      cursor_run_usage: {
+        Row: {
+          agent_name: string
+          cache_read_tokens: number
+          cache_write_tokens: number
+          cost_source: string
+          created_at: string
+          cursor_agent_id: string
+          cursor_run_id: string
+          duration_ms: number | null
+          finished_at: string | null
+          id: string
+          input_tokens: number
+          model: string | null
+          output_tokens: number
+          started_at: string | null
+          status: string
+          thread_id: string | null
+          total_cost_micros: number | null
+          total_tokens: number | null
+          user_id: string
+        }
+        Insert: {
+          agent_name: string
+          cache_read_tokens?: number
+          cache_write_tokens?: number
+          cost_source?: string
+          created_at?: string
+          cursor_agent_id: string
+          cursor_run_id: string
+          duration_ms?: number | null
+          finished_at?: string | null
+          id?: string
+          input_tokens?: number
+          model?: string | null
+          output_tokens?: number
+          started_at?: string | null
+          status: string
+          thread_id?: string | null
+          total_cost_micros?: number | null
+          total_tokens?: number | null
+          user_id: string
+        }
+        Update: {
+          agent_name?: string
+          cache_read_tokens?: number
+          cache_write_tokens?: number
+          cost_source?: string
+          created_at?: string
+          cursor_agent_id?: string
+          cursor_run_id?: string
+          duration_ms?: number | null
+          finished_at?: string | null
+          id?: string
+          input_tokens?: number
+          model?: string | null
+          output_tokens?: number
+          started_at?: string | null
+          status?: string
+          thread_id?: string | null
+          total_cost_micros?: number | null
+          total_tokens?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cursor_run_usage_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "cursor_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cursor_threads: {
         Row: {
           active_run_id: string | null

@@ -109,6 +109,24 @@ export const Route = createFileRoute("/api/cursor/stream/$runId")({
                     costSource: accounting.cost.source,
                   }
                 : null;
+              // Pull final run detail for model + timing (best-effort)
+              const detail = await cursor
+                .getAgentRun(thread.agent_name, agentId, runId)
+                .catch(() => null);
+              const { recordRunUsage } = await import("@/lib/cursor/usage.server");
+              await recordRunUsage({
+                userId: identity.user.id,
+                threadId: thread.id,
+                agentName: thread.agent_name,
+                cursorAgentId: agentId,
+                cursorRunId: runId,
+                status: "complete",
+                model: detail?.model ?? null,
+                usage,
+                durationMs: detail?.durationMs ?? null,
+                startedAt: detail?.createdAt ?? null,
+                finishedAt: detail?.updatedAt ?? new Date().toISOString(),
+              });
               // Clear the thread's pinned active run (only if it still points to us)
               await supabaseAdmin
                 .from("cursor_threads")
@@ -119,6 +137,23 @@ export const Route = createFileRoute("/api/cursor/stream/$runId")({
             } catch (streamError) {
               const message =
                 streamError instanceof Error ? streamError.message : "Cursor stream failed";
+              const detail = await cursor
+                .getAgentRun(thread.agent_name, agentId, runId)
+                .catch(() => null);
+              const { recordRunUsage } = await import("@/lib/cursor/usage.server");
+              await recordRunUsage({
+                userId: identity.user.id,
+                threadId: thread.id,
+                agentName: thread.agent_name,
+                cursorAgentId: agentId,
+                cursorRunId: runId,
+                status: "error",
+                model: detail?.model ?? null,
+                usage: null,
+                durationMs: detail?.durationMs ?? null,
+                startedAt: detail?.createdAt ?? null,
+                finishedAt: detail?.updatedAt ?? new Date().toISOString(),
+              });
               await supabaseAdmin
                 .from("cursor_threads")
                 .update({ active_run_id: null })

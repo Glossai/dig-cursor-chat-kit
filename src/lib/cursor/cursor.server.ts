@@ -138,6 +138,7 @@ const runDetailSchema = z.object({
   updatedAt: z.string().optional(),
   result: z.string().optional(),
   durationMs: z.number().optional(),
+  model: z.string().optional(),
 });
 
 export type CursorRunDetail = z.infer<typeof runDetailSchema>;
