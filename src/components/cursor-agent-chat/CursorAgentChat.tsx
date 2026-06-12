@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import { AssistantRuntimeProvider, useThread } from "@assistant-ui/react";
+import { useCursorThreadAgentId } from "./useCursorRuntime";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import type { CursorThreadHydrated } from "@/lib/cursor/types";
 import { CursorThreadSidebar } from "./CursorThreadSidebar";
@@ -49,9 +50,7 @@ function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatP
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {thread.cursor_agent_id && (
-                <OpenInCursorLink agentId={thread.cursor_agent_id} />
-              )}
+              <OpenInCursorPill threadId={thread.id} initialAgentId={thread.cursor_agent_id} />
             </div>
           </header>
           <CursorThread />
@@ -62,12 +61,21 @@ function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatP
 }
 
 /**
- * Status dot reflects the live thread state:
- *   yellow (pulsing) — a run is in progress / awaiting
- *   red               — last assistant message ended in error
- *   green             — idle / last run completed cleanly
+ * Status pill — always visible, never absent. State machine:
+ *   no agentId + idle     → gray, disabled
+ *   no agentId + running  → pulsing yellow, disabled (waiting for Cursor)
+ *   agentId    + running  → pulsing yellow, clickable
+ *   agentId    + error    → red, clickable
+ *   agentId    + idle     → green, clickable
  */
-function OpenInCursorLink({ agentId }: { agentId: string }) {
+function OpenInCursorPill({
+  threadId,
+  initialAgentId,
+}: {
+  threadId: string;
+  initialAgentId: string | null;
+}) {
+  const agentId = useCursorThreadAgentId(threadId, initialAgentId);
   const tone = useThread((t) => {
     if (t.isRunning) return "pending" as const;
     const last = [...t.messages].reverse().find((m) => m.role === "assistant");
@@ -76,19 +84,37 @@ function OpenInCursorLink({ agentId }: { agentId: string }) {
     return "ok" as const;
   });
   const dotClass =
-    tone === "pending"
-      ? "bg-amber-400 shadow-[0_0_8px_currentColor] animate-pulse"
-      : tone === "error"
-        ? "bg-red-500 shadow-[0_0_8px_currentColor]"
-        : "bg-emerald-500 shadow-[0_0_6px_currentColor]";
+    !agentId && tone !== "pending"
+      ? "bg-muted-foreground/40"
+      : tone === "pending"
+        ? "bg-amber-400 shadow-[0_0_8px_currentColor] animate-pulse"
+        : tone === "error"
+          ? "bg-red-500 shadow-[0_0_8px_currentColor]"
+          : "bg-emerald-500 shadow-[0_0_6px_currentColor]";
+  const baseClass =
+    "group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium shadow-sm transition";
+  const dot = <span className={`size-1.5 rounded-full ${dotClass}`} />;
+  if (!agentId) {
+    return (
+      <span
+        className={`${baseClass} cursor-not-allowed text-muted-foreground/70`}
+        aria-disabled="true"
+        title="Open in Cursor — available once Cursor accepts your first message"
+      >
+        {dot}
+        Open in Cursor
+        <ExternalLink className="size-3 opacity-40" />
+      </span>
+    );
+  }
   return (
     <a
       href={`https://cursor.com/agents/${agentId}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground/80 shadow-sm transition hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+      className={`${baseClass} text-foreground/80 hover:border-primary/40 hover:bg-primary/5 hover:text-foreground`}
     >
-      <span className={`size-1.5 rounded-full ${dotClass}`} />
+      {dot}
       Open in Cursor
       <ExternalLink className="size-3 opacity-60 transition group-hover:opacity-100" />
     </a>
