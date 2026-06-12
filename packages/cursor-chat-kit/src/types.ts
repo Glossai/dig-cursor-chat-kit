@@ -8,6 +8,8 @@ export type CursorThread = {
   title: string;
   created_at: string;
   updated_at: string;
+  active_run_id?: string | null;
+  last_status?: CursorRunStatus | null;
 };
 
 export type CursorUserPromptRow = {
