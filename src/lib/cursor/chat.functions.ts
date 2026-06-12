@@ -269,7 +269,44 @@ export const cancelCursorMessage = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .maybeSingle();
     if (error || !thread) throw new Error("Conversation not found");
-    const { cancelCursorRun } = await import("./cursor.server");
-    await cancelCursorRun(thread.agent_name, data.cursorAgentId, data.cursorRunId);
+    const cursor = await import("./cursor.server");
+    await cursor.cancelCursorRun(thread.agent_name, data.cursorAgentId, data.cursorRunId);
+    // Ledger the cancellation + best-effort final usage snapshot
+    const detail = await cursor
+      .getAgentRun(thread.agent_name, data.cursorAgentId, data.cursorRunId)
+      .catch(() => null);
+    const accounting = await cursor
+      .fetchRunUsage(thread.agent_name, data.cursorAgentId, data.cursorRunId, null, null)
+      .catch(() => null);
+    const { recordRunUsage } = await import("./usage.server");
+    await recordRunUsage({
+      userId: context.userId,
+      threadId: thread.id,
+      agentName: thread.agent_name,
+      cursorAgentId: data.cursorAgentId,
+      cursorRunId: data.cursorRunId,
+      status: "cancelled",
+      model: detail?.model ?? null,
+      usage: accounting
+        ? {
+            inputTokens: accounting.usage.inputTokens,
+            outputTokens: accounting.usage.outputTokens,
+            cacheReadTokens: accounting.usage.cacheReadTokens,
+            cacheWriteTokens: accounting.usage.cacheWriteTokens,
+            totalTokens: accounting.usage.totalTokens,
+            totalCostMicros: accounting.cost.totalCostMicros,
+            costSource: accounting.cost.source,
+          }
+        : null,
+      durationMs: detail?.durationMs ?? null,
+      startedAt: detail?.createdAt ?? null,
+      finishedAt: detail?.updatedAt ?? new Date().toISOString(),
+    });
+    // Drop the active_run_id pin if it still points to us
+    await context.supabase
+      .from("cursor_threads")
+      .update({ active_run_id: null })
+      .eq("id", thread.id)
+      .eq("active_run_id", data.cursorRunId);
     return { ok: true };
   });
