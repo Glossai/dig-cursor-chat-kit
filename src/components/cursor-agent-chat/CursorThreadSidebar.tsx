@@ -101,6 +101,7 @@ export function CursorThreadSidebar({
                   params={{ threadId: thread.id }}
                   className="flex min-w-0 flex-1 items-center gap-2"
                 >
+                  <ThreadStatusDot thread={thread} isActive={thread.id === threadId} />
                   <MessageSquare />
                   <span className="truncate">{thread.title}</span>
                 </Link>
