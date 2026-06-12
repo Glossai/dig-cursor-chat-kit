@@ -31,9 +31,14 @@ function Index() {
           </div>
           <span className="font-semibold">Cursor Cloud Chat</span>
         </div>
-        <Button asChild variant="outline">
-          <Link to="/auth">Sign in</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="ghost">
+            <Link to="/stats">Usage stats</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/auth">Sign in</Link>
+          </Button>
+        </div>
       </nav>
       <section className="mx-auto grid max-w-6xl gap-16 px-6 pb-20 pt-20 lg:grid-cols-[1.15fr_.85fr] lg:pt-28">
         <div>
@@ -47,10 +52,15 @@ function Index() {
             Persistent threads, live SSE responses, per-user traceability, token usage, and
             explainable cost accounting—wrapped in one reusable component.
           </p>
-          <div className="mt-9 flex gap-3">
+          <div className="mt-9 flex flex-wrap gap-3">
             <Button asChild size="lg">
               <Link to="/auth">
                 Open test chat <ArrowRight />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link to="/stats">
+                <BarChart3 /> See usage stats
               </Link>
             </Button>
           </div>
