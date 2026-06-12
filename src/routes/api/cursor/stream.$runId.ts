@@ -109,10 +109,21 @@ export const Route = createFileRoute("/api/cursor/stream/$runId")({
                     costSource: accounting.cost.source,
                   }
                 : null;
+              // Clear the thread's pinned active run (only if it still points to us)
+              await supabaseAdmin
+                .from("cursor_threads")
+                .update({ active_run_id: null })
+                .eq("id", thread.id)
+                .eq("active_run_id", runId);
               send({ type: "done", text: fullText, usage });
             } catch (streamError) {
               const message =
                 streamError instanceof Error ? streamError.message : "Cursor stream failed";
+              await supabaseAdmin
+                .from("cursor_threads")
+                .update({ active_run_id: null })
+                .eq("id", thread.id)
+                .eq("active_run_id", runId);
               send({ type: "error", message });
             } finally {
               controller.close();
