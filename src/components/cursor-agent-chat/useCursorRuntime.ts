@@ -31,6 +31,21 @@ type ThreadStore = {
 
 const stores = new Map<string, ThreadStore>();
 
+/** Subscribe to the live agentId for a thread (updates after first send). */
+export function useCursorThreadAgentId(threadId: string, fallback: string | null) {
+  const store = stores.get(threadId);
+  return useSyncExternalStore(
+    (cb) => {
+      const s = stores.get(threadId);
+      if (!s) return () => {};
+      s.listeners.add(cb);
+      return () => s.listeners.delete(cb);
+    },
+    () => store?.agentId ?? fallback,
+    () => store?.agentId ?? fallback,
+  );
+}
+
 function getOrCreateStore(
   threadId: string,
   initialMessages: CursorHydratedMessage[],
