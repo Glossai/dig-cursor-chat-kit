@@ -165,9 +165,6 @@ export function CursorThread() {
               </ComposerPrimitive.Send>
             </ThreadPrimitive.If>
           </ComposerPrimitive.Root>
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">
-            Runs execute in Cursor Cloud. Verify generated changes before merging.
-          </p>
         </ThreadPrimitive.ViewportFooter>
       </ThreadPrimitive.Viewport>
     </ThreadPrimitive.Root>
