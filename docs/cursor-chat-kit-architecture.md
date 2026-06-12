@@ -146,7 +146,7 @@ gives us:
 |---|---|---|
 | `cursor.server.ts` | Reads env directly inside every call | Takes `AgentConfig` as a parameter; project wires an `AgentConfigResolver` |
 | `usage.server.ts` | `await import("@/integrations/supabase/client.server")` | Receives `getAdminClient` via factory deps |
-| `chat.functions.ts` | `.middleware([requireSupabaseAuth])` hard-coded | Factory accepts `withAuth` middleware; consumer supplies the project's middleware |
+| `chat.functions.ts` | `.middleware([requireSupabaseAuth])` hard-coded | Each handler opens with `const { userId, db, isAnonymous } = await deps.resolveAuth()`; no middleware import |
 | `stream.$runId.ts` | Imports admin client and project SSE proxy directly | Re-exports a kit-provided `createStreamRouteHandler({ deps })` |
 | React components | Import `@/integrations/supabase/client` for realtime | Receive the browser client via context (`<CursorChatProvider supabase={…}>`) |
 
