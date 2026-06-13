@@ -35,6 +35,7 @@ type PromptRow = {
   id: string;
   thread_id: string;
   cursor_run_id: string;
+  retry_of_run_id?: string | null;
   content: string;
   created_at: string;
 };
@@ -95,9 +96,9 @@ export function createCursorChatBackend(options: CursorChatBackendOptions) {
         .from<ThreadRow[]>("cursor_threads")
         .select("id, agent_name, cursor_agent_id, title, created_at, updated_at, active_run_id, pinned_at, archived_at, last_viewed_at")
         .eq("user_id", userId)
-        .eq("agent_name", agentName)
-        .is("archived_at", input.archived ? null : null)
-        .order("updated_at", { ascending: false });
+        .eq("agent_name", agentName);
+      request = input.archived ? request.not("archived_at", "is", null) : request.is("archived_at", null);
+      request = request.order("updated_at", { ascending: false });
       if (input.query) request = request.or(`title.ilike.%${requiredText(input.query, "query", 160)}%`);
       const { data, error } = await request;
       if (error) throw new Error("Could not load conversations");
@@ -211,7 +212,7 @@ export function createCursorChatBackend(options: CursorChatBackendOptions) {
       for (const run of runs) {
         const prompt = promptByRun.get(run.id);
         const detail = detailByRun.get(run.id);
-        if (prompt && !(prompt as PromptRow & { retry_of_run_id?: string | null }).retry_of_run_id) {
+        if (prompt && !prompt.retry_of_run_id) {
           messages.push({
             kind: "user",
             id: `user-${prompt.id}`,
