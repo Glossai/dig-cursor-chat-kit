@@ -145,7 +145,7 @@ export const getCursorThread = createServerFn({ method: "GET" })
     const pinnedRunId = thread.active_run_id;
     const { data: prompts, error: promptsError } = await context.supabase
       .from("cursor_messages")
-      .select("id, thread_id, cursor_run_id, content, created_at")
+      .select("id, thread_id, cursor_run_id, retry_of_run_id, content, created_at")
       .eq("thread_id", data.threadId)
       .order("created_at", { ascending: true });
     if (promptsError) throw new Error("Could not load prompts");
@@ -193,7 +193,7 @@ export const getCursorThread = createServerFn({ method: "GET" })
       const prompt = promptByRunId.get(run.id);
       const detail = detailByRunId.get(run.id);
       // User prompt (from DB) — Cursor's API does not echo prompts back.
-      if (prompt) {
+      if (prompt && !prompt.retry_of_run_id) {
         messages.push({
           kind: "user",
           id: `user-${prompt.id}`,
