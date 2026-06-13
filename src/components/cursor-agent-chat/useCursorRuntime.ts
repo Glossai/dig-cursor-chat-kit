@@ -5,7 +5,7 @@ import {
   type AppendMessage,
   type ThreadMessageLike,
 } from "@assistant-ui/react";
-import { cancelCursorMessage, sendCursorMessage } from "@/lib/cursor/chat.functions";
+import { cancelCursorMessage, retryCursorMessage, sendCursorMessage } from "@/lib/cursor/chat.functions";
 import type { CursorHydratedMessage, CursorRunUsage } from "@/lib/cursor/types";
 import { readCursorStream } from "./cursorStreamClient";
 
@@ -329,4 +329,28 @@ export function useCursorRuntime({
     onNew,
     onCancel,
   });
+}
+
+export function useRetryCursorResponse(threadId: string) {
+  const retry = useServerFn(retryCursorMessage);
+  return useCallback(async (cursorRunId: string) => {
+    const store = stores.get(threadId);
+    if (!store || store.isRunning) return;
+    const assistantId = `asst-retry-tmp-${Date.now()}`;
+    store.messages = [...store.messages, { kind: "assistant", id: assistantId, cursor_run_id: "", content: "", status: "running", createdAt: new Date().toISOString() }];
+    store.isRunning = true;
+    notify(store);
+    try {
+      const started = await retry({ data: { threadId, cursorRunId } });
+      const permanentId = `asst-${started.cursorRunId}`;
+      store.messages = store.messages.map((message) => message.id === assistantId ? { ...message, id: permanentId, cursor_run_id: started.cursorRunId } : message);
+      store.agentId = started.cursorAgentId;
+      notify(store);
+      await runStreamLoop(store, started.cursorAgentId, started.cursorRunId, permanentId);
+    } catch (error) {
+      patchAssistant(store, assistantId, { status: "error", errorMessage: error instanceof Error ? error.message : "Retry failed" });
+      store.isRunning = false;
+      notify(store);
+    }
+  }, [retry, threadId]);
 }
