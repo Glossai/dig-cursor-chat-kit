@@ -334,6 +334,7 @@ export function useCursorRuntime({
 export function useRetryCursorResponse(threadId: string) {
   const retry = useServerFn(retryCursorMessage);
   return useCallback(async (cursorRunId: string) => {
+    if (!/^(bc|run)-[a-zA-Z0-9-]+$/.test(cursorRunId)) return;
     const store = stores.get(threadId);
     if (!store || store.isRunning) return;
     const assistantId = `asst-retry-tmp-${Date.now()}`;

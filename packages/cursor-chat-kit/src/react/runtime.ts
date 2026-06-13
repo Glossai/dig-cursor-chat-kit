@@ -149,6 +149,7 @@ export function useCursorRuntime(args: { threadId: string; agentId: string | nul
 export function useRetryCursorResponse(threadId: string) {
   const client = useCursorChatClient();
   return useCallback(async (cursorRunId: string) => {
+    if (!/^(bc|run)-[a-zA-Z0-9-]+$/.test(cursorRunId)) return;
     const store = stores.get(threadId);
     if (!store || store.running || !client.retryMessage) return;
     const assistantId = `asst-retry-tmp-${Date.now()}`;
