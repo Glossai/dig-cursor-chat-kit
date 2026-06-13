@@ -121,7 +121,11 @@ function DraftKeeper({ threadId }: { threadId: string }) {
   const text = useComposer((state) => state.text);
   const composer = useComposerRuntime();
   useEffect(() => { composer.setText(localStorage.getItem(`cursor-chat-draft:${threadId}`) ?? ""); }, [composer, threadId]);
-  useEffect(() => { localStorage.setItem(`cursor-chat-draft:${threadId}`, text); }, [text, threadId]);
+  useEffect(() => {
+    const key = `cursor-chat-draft:${threadId}`;
+    if (text) localStorage.setItem(key, text);
+    else localStorage.removeItem(key);
+  }, [text, threadId]);
   return null;
 }
 
