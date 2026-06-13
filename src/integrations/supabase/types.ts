@@ -20,6 +20,7 @@ export type Database = {
           created_at: string
           cursor_run_id: string
           id: string
+          retry_of_run_id: string | null
           thread_id: string
           user_id: string
         }
@@ -28,6 +29,7 @@ export type Database = {
           created_at?: string
           cursor_run_id: string
           id?: string
+          retry_of_run_id?: string | null
           thread_id: string
           user_id: string
         }
@@ -36,6 +38,7 @@ export type Database = {
           created_at?: string
           cursor_run_id?: string
           id?: string
+          retry_of_run_id?: string | null
           thread_id?: string
           user_id?: string
         }
@@ -127,9 +130,12 @@ export type Database = {
         Row: {
           active_run_id: string | null
           agent_name: string
+          archived_at: string | null
           created_at: string
           cursor_agent_id: string | null
           id: string
+          last_viewed_at: string | null
+          pinned_at: string | null
           title: string
           updated_at: string
           user_id: string
@@ -137,9 +143,12 @@ export type Database = {
         Insert: {
           active_run_id?: string | null
           agent_name: string
+          archived_at?: string | null
           created_at?: string
           cursor_agent_id?: string | null
           id?: string
+          last_viewed_at?: string | null
+          pinned_at?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -147,9 +156,12 @@ export type Database = {
         Update: {
           active_run_id?: string | null
           agent_name?: string
+          archived_at?: string | null
           created_at?: string
           cursor_agent_id?: string | null
           id?: string
+          last_viewed_at?: string | null
+          pinned_at?: string | null
           title?: string
           updated_at?: string
           user_id?: string

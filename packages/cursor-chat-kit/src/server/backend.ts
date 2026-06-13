@@ -35,6 +35,7 @@ type PromptRow = {
   id: string;
   thread_id: string;
   cursor_run_id: string;
+  retry_of_run_id?: string | null;
   content: string;
   created_at: string;
 };
@@ -88,15 +89,18 @@ export function createCursorChatBackend(options: CursorChatBackendOptions) {
     );
 
   return {
-    async listThreads(input: { agentName: string }) {
+    async listThreads(input: { agentName: string; query?: string; archived?: boolean }) {
       const { userId, db } = await auth();
       const agentName = requiredAgentName(input.agentName);
-      const { data, error } = await db
+      let request = db
         .from<ThreadRow[]>("cursor_threads")
-        .select("id, agent_name, cursor_agent_id, title, created_at, updated_at, active_run_id")
+        .select("id, agent_name, cursor_agent_id, title, created_at, updated_at, active_run_id, pinned_at, archived_at, last_viewed_at")
         .eq("user_id", userId)
-        .eq("agent_name", agentName)
-        .order("updated_at", { ascending: false });
+        .eq("agent_name", agentName);
+      request = input.archived ? request.not("archived_at", "is", null) : request.is("archived_at", null);
+      request = request.order("updated_at", { ascending: false });
+      if (input.query) request = request.or(`title.ilike.%${requiredText(input.query, "query", 160)}%`);
+      const { data, error } = await request;
       if (error) throw new Error("Could not load conversations");
       const threads = data ?? [];
       const ids = threads.map((thread) => thread.id);
@@ -144,6 +148,18 @@ export function createCursorChatBackend(options: CursorChatBackendOptions) {
       return { ok: true as const };
     },
 
+    async updateThread(input: { threadId: string; pinned?: boolean; archived?: boolean; viewed?: boolean }) {
+      const { userId, db } = await auth();
+      const now = new Date().toISOString();
+      const patch: Record<string, string | null> = {};
+      if (input.pinned !== undefined) patch.pinned_at = input.pinned ? now : null;
+      if (input.archived !== undefined) patch.archived_at = input.archived ? now : null;
+      if (input.viewed) patch.last_viewed_at = now;
+      const { error } = await db.from("cursor_threads").update(patch).eq("id", input.threadId).eq("user_id", userId);
+      if (error) throw new Error("Could not update conversation");
+      return { ok: true as const };
+    },
+
     async deleteThread(input: { threadId: string }) {
       const { userId, db } = await auth();
       const { error } = await db
@@ -167,7 +183,7 @@ export function createCursorChatBackend(options: CursorChatBackendOptions) {
       if (threadResult.error || !thread) throw new Error("Conversation not found");
       const promptsResult = await db
         .from<PromptRow[]>("cursor_messages")
-        .select("id, thread_id, cursor_run_id, content, created_at")
+        .select("id, thread_id, cursor_run_id, retry_of_run_id, content, created_at")
         .eq("thread_id", input.threadId)
         .order("created_at", { ascending: true });
       if (promptsResult.error) throw new Error("Could not load prompts");
@@ -196,7 +212,7 @@ export function createCursorChatBackend(options: CursorChatBackendOptions) {
       for (const run of runs) {
         const prompt = promptByRun.get(run.id);
         const detail = detailByRun.get(run.id);
-        if (prompt) {
+        if (prompt && !prompt.retry_of_run_id) {
           messages.push({
             kind: "user",
             id: `user-${prompt.id}`,
@@ -297,6 +313,37 @@ export function createCursorChatBackend(options: CursorChatBackendOptions) {
         cursorAgentId,
         cursorRunId,
       };
+    },
+
+    async retryMessage(input: { threadId: string; cursorRunId: string }) {
+      const { userId, db } = await auth();
+      const runId = requiredCursorId(input.cursorRunId);
+      const threadResult = await db
+        .from<Pick<ThreadRow, "id" | "agent_name" | "cursor_agent_id">>("cursor_threads")
+        .select("id, agent_name, cursor_agent_id")
+        .eq("id", input.threadId)
+        .eq("user_id", userId)
+        .single();
+      const thread = threadResult.data;
+      if (threadResult.error || !thread?.cursor_agent_id) throw new Error("Conversation not found");
+      const promptResult = await db
+        .from<Pick<PromptRow, "content">>("cursor_messages")
+        .select("content")
+        .eq("thread_id", thread.id)
+        .eq("cursor_run_id", runId)
+        .eq("user_id", userId)
+        .single();
+      if (promptResult.error || !promptResult.data) throw new Error("Original prompt not found");
+      const config = await options.resolveAgentConfig(thread.agent_name);
+      const retryRunId = await createFollowupRun(config, thread.cursor_agent_id, promptResult.data.content);
+      const retryResult = await db
+        .from<{ id: string }>("cursor_messages")
+        .insert({ thread_id: thread.id, user_id: userId, cursor_run_id: retryRunId, content: promptResult.data.content, retry_of_run_id: runId })
+        .select("id")
+        .single();
+      if (retryResult.error || !retryResult.data) throw new Error("Could not retry response");
+      await db.from("cursor_threads").update({ active_run_id: retryRunId }).eq("id", thread.id).eq("user_id", userId);
+      return { promptId: retryResult.data.id, cursorAgentId: thread.cursor_agent_id, cursorRunId: retryRunId };
     },
 
     async cancelMessage(input: { cursorAgentId: string; cursorRunId: string }) {

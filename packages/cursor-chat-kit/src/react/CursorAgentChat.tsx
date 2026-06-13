@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { CursorThreadHydrated } from "../types";
 import { useCursorRuntime, useCursorThreadAgentId } from "./runtime";
+import { useCursorChatClient } from "./context";
 import { CursorThread } from "./CursorThread";
 import { CursorThreadLoading } from "./CursorThreadLoading";
 import { CursorThreadSidebar } from "./CursorThreadSidebar";
@@ -33,9 +34,11 @@ function StatusLink({ threadId, initialAgentId, label }: { threadId: string; ini
 }
 
 function Chat({ agentName, data, title, className, labels: labelOverrides, classNames = {}, slots = {}, features: featureOverrides, loading = false }: CursorAgentChatProps) {
+  const client = useCursorChatClient();
   const { thread, messages, liveRunId } = data;
   const [optimisticTitle, setOptimisticTitle] = useState(title ?? thread.title);
   useEffect(() => setOptimisticTitle(title ?? thread.title), [thread.id, thread.title, title]);
+  useEffect(() => { void client.updateThread?.({ threadId: thread.id, viewed: true }); }, [client, thread.id]);
   const runtime = useCursorRuntime({ threadId: thread.id, agentId: thread.cursor_agent_id, initialMessages: messages, liveRunId });
   const labels = { ...defaultCursorChatLabels, ...labelOverrides };
   const features = { ...defaultCursorChatFeatures, ...featureOverrides };
@@ -46,7 +49,7 @@ function Chat({ agentName, data, title, className, labels: labelOverrides, class
       {features.sidebar && <CursorThreadSidebar agentName={agentName} threadId={thread.id} labels={labels} classNames={classNames} features={features} onSelectThread={(selected) => setOptimisticTitle(selected.title)} />}
       <SidebarInset className="min-h-svh overflow-hidden bg-background">
         {Header ? <Header thread={{ ...thread, title: optimisticTitle }} status={status} /> : <header className={cn("flex h-14 shrink-0 items-center justify-between border-b px-3", classNames.header)}><div className="flex min-w-0 items-center gap-2">{features.sidebar && <SidebarTrigger />}<h1 className="truncate text-sm font-semibold">{optimisticTitle}</h1></div>{status}</header>}
-        {loading ? <CursorThreadLoading /> : <CursorThread labels={labels} classNames={classNames} slots={slots} features={features} />}
+        {loading ? <CursorThreadLoading /> : <CursorThread threadId={thread.id} labels={labels} classNames={classNames} slots={slots} features={features} />}
       </SidebarInset>
     </SidebarProvider>
   </AssistantRuntimeProvider>;

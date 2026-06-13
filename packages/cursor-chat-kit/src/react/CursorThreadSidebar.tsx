@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Home, MessageSquare, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Archive, Home, MessageSquare, MoreHorizontal, Pencil, Pin, Plus, Search, Trash2 } from "lucide-react";
 import { useThread } from "@assistant-ui/react";
 import type { CursorThread } from "../types";
 import { useCursorChatClient } from "./context";
 import type { CursorChatClassNames, CursorChatFeatures, CursorChatLabels } from "./customization";
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "./ui/sidebar";
 import { cn } from "./ui/utils";
@@ -23,7 +24,9 @@ export function CursorThreadSidebar({ agentName, threadId, labels, classNames, f
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const [threads, setThreads] = useState<CursorThread[]>([]);
-  useEffect(() => { void client.listThreads({ agentName }).then(setThreads); }, [agentName, client]);
+  const [query, setQuery] = useState("");
+  const [archived, setArchived] = useState(false);
+  useEffect(() => { void client.listThreads({ agentName, query: query || undefined, archived }).then(setThreads); }, [agentName, archived, client, query]);
   const create = async () => {
     const thread = await client.createThread({ agentName, title: labels.newThreadTitle });
     setThreads((current) => [thread, ...current]);
@@ -44,9 +47,9 @@ export function CursorThreadSidebar({ agentName, threadId, labels, classNames, f
       <div className="flex items-center gap-2 overflow-hidden"><div className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary font-mono text-xs font-bold text-sidebar-primary-foreground">C_</div>{!collapsed && <div className="min-w-0"><p className="truncate text-sm font-semibold">{labels.productName}</p><p className="truncate text-xs text-muted-foreground">{agentName}</p></div>}</div>
       <Button variant="outline" size={collapsed ? "icon" : "sm"} className="mt-2 w-full" onClick={() => void create()}><Plus />{!collapsed && labels.newThread}</Button>
     </SidebarHeader>
-    <SidebarContent className="p-2"><SidebarMenu>{threads.map((thread) => <SidebarMenuItem key={thread.id} className="group/item flex items-center">
-      <SidebarMenuButton isActive={thread.id === threadId} tooltip={thread.title} onClick={() => { onSelectThread?.(thread); if (isMobile) setOpenMobile(false); void client.navigateToThread(thread.id); }} className="flex min-w-0 flex-1 items-center gap-2"><ThreadStatusDot thread={thread} isActive={thread.id === threadId} /><MessageSquare /><span className="truncate">{thread.title}</span></SidebarMenuButton>
-      {!collapsed && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-8 opacity-0 group-hover/item:opacity-100" aria-label={`Options for ${thread.title}`}><MoreHorizontal /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem className="text-destructive" onClick={() => void remove(thread.id)}><Trash2 />{labels.deleteThread}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
+    <SidebarContent className="p-2">{!collapsed && <div className="mb-2 space-y-2"><div className="relative"><Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search threads" className="h-8 pl-8" /></div><Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setArchived((value) => !value)}><Archive />{archived ? "Active threads" : "Archived"}</Button></div>}<SidebarMenu>{threads.map((thread) => <SidebarMenuItem key={thread.id} className="group/item flex items-center">
+      <SidebarMenuButton isActive={thread.id === threadId} tooltip={thread.title} onClick={() => { onSelectThread?.(thread); if (isMobile) setOpenMobile(false); void client.navigateToThread(thread.id); }} className="flex min-w-0 flex-1 items-center gap-2"><ThreadStatusDot thread={thread} isActive={thread.id === threadId} /><MessageSquare /><span className="truncate">{thread.title}</span>{thread.unread && <span className="ml-auto size-2 rounded-full bg-primary" />}</SidebarMenuButton>
+      {!collapsed && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-8 opacity-0 group-hover/item:opacity-100" aria-label={`Options for ${thread.title}`}><MoreHorizontal /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{client.renameThread && <DropdownMenuItem onClick={() => { const title = window.prompt("Rename thread", thread.title)?.trim(); if (title) void client.renameThread?.({ threadId: thread.id, title }).then(() => setThreads((current) => current.map((item) => item.id === thread.id ? { ...item, title } : item))); }}><Pencil />Rename</DropdownMenuItem>}{client.updateThread && <><DropdownMenuItem onClick={() => void client.updateThread?.({ threadId: thread.id, pinned: !thread.pinned_at }).then(() => client.listThreads({ agentName, query: query || undefined, archived }).then(setThreads))}><Pin />{thread.pinned_at ? "Unpin" : "Pin"}</DropdownMenuItem><DropdownMenuItem onClick={() => void client.updateThread?.({ threadId: thread.id, archived: !thread.archived_at }).then(() => client.listThreads({ agentName, query: query || undefined, archived }).then(setThreads))}><Archive />{thread.archived_at ? "Restore" : "Archive"}</DropdownMenuItem></>}<DropdownMenuItem className="text-destructive" onClick={() => void remove(thread.id)}><Trash2 />{labels.deleteThread}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
     </SidebarMenuItem>)}</SidebarMenu></SidebarContent>
     {features.homeNavigation && client.navigateHome && <SidebarFooter className="border-t border-sidebar-border p-3"><Button variant="ghost" size={collapsed ? "icon" : "sm"} className="w-full" onClick={() => void client.navigateHome?.()}><Home />{!collapsed && labels.home}</Button></SidebarFooter>}
   </Sidebar>;

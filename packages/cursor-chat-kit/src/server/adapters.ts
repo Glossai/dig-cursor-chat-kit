@@ -41,6 +41,9 @@ export type DbQueryLike<T = unknown> = PromiseLike<DbResult<T>> & {
   update(values: Record<string, unknown>): DbQueryLike<T>;
   delete(): DbQueryLike<T>;
   eq(column: string, value: unknown): DbQueryLike<T>;
+  is(column: string, value: null): DbQueryLike<T>;
+  not(column: string, operator: string, value: unknown): DbQueryLike<T>;
+  or(filters: string): DbQueryLike<T>;
   in(column: string, values: readonly unknown[]): DbQueryLike<T>;
   order(column: string, options?: { ascending?: boolean }): DbQueryLike<T>;
   single(): Promise<DbResult<T>>;

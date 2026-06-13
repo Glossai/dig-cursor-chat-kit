@@ -9,6 +9,8 @@ import { CursorThreadSidebar } from "./CursorThreadSidebar";
 import { CursorThread } from "./CursorThread";
 import { CursorThreadLoading } from "./CursorThreadLoading";
 import { useCursorRuntime } from "./useCursorRuntime";
+import { useServerFn } from "@tanstack/react-start";
+import { updateCursorThreadState } from "@/lib/cursor/chat.functions";
 
 export type CursorAgentChatProps = {
   agentName: string;
@@ -31,7 +33,9 @@ function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatP
   const isLoadingThread = useRouterState({ select: (state) => state.status === "pending" });
   const { thread, messages, liveRunId } = data;
   const [optimisticTitle, setOptimisticTitle] = useState(thread.title);
+  const updateThreadState = useServerFn(updateCursorThreadState);
   useEffect(() => setOptimisticTitle(thread.title), [thread.id, thread.title]);
+  useEffect(() => { void updateThreadState({ data: { threadId: thread.id, viewed: true } }); }, [thread.id, updateThreadState]);
   const runtime = useCursorRuntime({
     threadId: thread.id,
     agentId: thread.cursor_agent_id,
@@ -54,7 +58,7 @@ function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatP
               <OpenInCursorPill threadId={thread.id} initialAgentId={thread.cursor_agent_id} />
             </div>
           </header>
-          {isLoadingThread ? <CursorThreadLoading /> : <CursorThread />}
+          {isLoadingThread ? <CursorThreadLoading /> : <CursorThread threadId={thread.id} />}
         </SidebarInset>
       </SidebarProvider>
     </AssistantRuntimeProvider>

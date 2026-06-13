@@ -1,9 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useThread } from "@assistant-ui/react";
-import { Home, MessageSquare, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Archive, Home, MessageSquare, MoreHorizontal, Pencil, Pin, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { CursorThread as CursorThreadType } from "@/lib/cursor/types";
 import {
   DropdownMenu,
@@ -25,6 +27,8 @@ import {
   createCursorThread,
   deleteCursorThread,
   listCursorThreads,
+  renameCursorThread,
+  updateCursorThreadState,
 } from "@/lib/cursor/chat.functions";
 
 export function CursorThreadSidebar({
@@ -43,9 +47,15 @@ export function CursorThreadSidebar({
   const list = useServerFn(listCursorThreads);
   const create = useServerFn(createCursorThread);
   const remove = useServerFn(deleteCursorThread);
+  const rename = useServerFn(renameCursorThread);
+  const updateState = useServerFn(updateCursorThreadState);
+  const [query, setQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
   const threads = useQuery({
-    queryKey: ["cursor-threads", agentName],
-    queryFn: () => list({ data: { agentName } }),
+    queryKey: ["cursor-threads", agentName, query, showArchived],
+    queryFn: () => list({ data: { agentName, query: query || undefined, archived: showArchived } }),
   });
   const createMutation = useMutation({
     mutationFn: () => create({ data: { agentName, title: "New conversation" } }),
@@ -65,6 +75,15 @@ export function CursorThreadSidebar({
         else createMutation.mutate();
       }
     },
+  });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["cursor-threads", agentName] });
+  const renameMutation = useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) => rename({ data: { threadId: id, title } }),
+    onSuccess: async () => { setEditingId(null); await refresh(); },
+  });
+  const stateMutation = useMutation({
+    mutationFn: ({ id, pinned, archived }: { id: string; pinned?: boolean; archived?: boolean }) => updateState({ data: { threadId: id, pinned, archived } }),
+    onSuccess: refresh,
   });
 
   return (
@@ -93,6 +112,7 @@ export function CursorThreadSidebar({
         </Button>
       </SidebarHeader>
       <SidebarContent className="p-2">
+        {!collapsed && <div className="mb-2 space-y-2"><div className="relative"><Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search threads" className="h-8 pl-8" /></div><Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setShowArchived((value) => !value)}><Archive />{showArchived ? "Active threads" : "Archived"}</Button></div>}
         <SidebarMenu>
           {threads.data?.map((thread) => (
             <SidebarMenuItem key={thread.id} className="group/item flex items-center">
@@ -105,7 +125,8 @@ export function CursorThreadSidebar({
                 >
                   <ThreadStatusDot thread={thread} isActive={thread.id === threadId} />
                   <MessageSquare />
-                  <span className="truncate">{thread.title}</span>
+                  {editingId === thread.id ? <Input autoFocus value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)} onClick={(event) => event.preventDefault()} onKeyDown={(event) => { if (event.key === "Enter" && editingTitle.trim()) renameMutation.mutate({ id: thread.id, title: editingTitle.trim() }); if (event.key === "Escape") setEditingId(null); }} className="h-7" /> : <span className="truncate">{thread.title}</span>}
+                  {thread.unread && <span className="ml-auto size-2 rounded-full bg-primary" aria-label="Unread" />}
                 </Link>
               </SidebarMenuButton>
               {!collapsed && (
@@ -121,6 +142,9 @@ export function CursorThreadSidebar({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => { setEditingId(thread.id); setEditingTitle(thread.title); }}><Pencil />Rename</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => stateMutation.mutate({ id: thread.id, pinned: !thread.pinned_at })}><Pin />{thread.pinned_at ? "Unpin" : "Pin"}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => stateMutation.mutate({ id: thread.id, archived: !thread.archived_at })}><Archive />{thread.archived_at ? "Restore" : "Archive"}</DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive"
                       onClick={() => deleteMutation.mutate(thread.id)}

@@ -63,6 +63,13 @@ Every customization field is optional. The package includes assistant-ui,
 Radix primitives, icons, markdown rendering, Shiki, and styling helpers as
 regular dependencies; only React and React DOM are peers.
 
+The default thread experience also includes title/message search, rename,
+auto-title on first send, running/error/unread status, retry without repeating
+the user bubble, pin/archive organization, per-thread browser drafts, and
+copy/wrap/download/collapse controls for code blocks. Hosts expose the optional
+`renameThread`, `updateThread`, and `retryMessage` client methods to enable the
+corresponding controls; all persistence remains in the consuming project.
+
 ## Consumer responsibilities
 
 The consuming app always owns its database, authentication, database clients, route navigation,
