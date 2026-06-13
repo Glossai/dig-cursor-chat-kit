@@ -101,7 +101,7 @@ export const updateCursorThreadState = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data, context }) => {
     const now = new Date().toISOString();
-    const patch: Record<string, string | null> = {};
+    const patch: { pinned_at?: string | null; archived_at?: string | null; last_viewed_at?: string | null } = {};
     if (data.pinned !== undefined) patch.pinned_at = data.pinned ? now : null;
     if (data.archived !== undefined) patch.archived_at = data.archived ? now : null;
     if (data.viewed) patch.last_viewed_at = now;
