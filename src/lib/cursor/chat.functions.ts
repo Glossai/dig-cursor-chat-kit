@@ -91,6 +91,29 @@ export const renameCursorThread = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateCursorThreadState = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({
+    threadId,
+    pinned: z.boolean().optional(),
+    archived: z.boolean().optional(),
+    viewed: z.boolean().optional(),
+  }))
+  .handler(async ({ data, context }) => {
+    const now = new Date().toISOString();
+    const patch: Record<string, string | null> = {};
+    if (data.pinned !== undefined) patch.pinned_at = data.pinned ? now : null;
+    if (data.archived !== undefined) patch.archived_at = data.archived ? now : null;
+    if (data.viewed) patch.last_viewed_at = now;
+    const { error } = await context.supabase
+      .from("cursor_threads")
+      .update(patch)
+      .eq("id", data.threadId)
+      .eq("user_id", context.userId);
+    if (error) throw new Error("Could not update conversation");
+    return { ok: true as const };
+  });
+
 export const deleteCursorThread = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ threadId }))
@@ -314,6 +337,42 @@ export const sendCursorMessage = createServerFn({ method: "POST" })
       cursorAgentId,
       cursorRunId,
     };
+  });
+
+export const retryCursorMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ threadId, cursorRunId: cursorId }))
+  .handler(async ({ data, context }) => {
+    const { data: thread, error: threadError } = await context.supabase
+      .from("cursor_threads")
+      .select("id, agent_name, cursor_agent_id")
+      .eq("id", data.threadId)
+      .eq("user_id", context.userId)
+      .single();
+    if (threadError || !thread?.cursor_agent_id) throw new Error("Conversation not found");
+    const { data: prompt, error: promptError } = await context.supabase
+      .from("cursor_messages")
+      .select("content")
+      .eq("thread_id", data.threadId)
+      .eq("cursor_run_id", data.cursorRunId)
+      .eq("user_id", context.userId)
+      .single();
+    if (promptError || !prompt) throw new Error("Original prompt not found");
+    const cursor = await import("./cursor.server");
+    const retryRunId = await cursor.createFollowupRun(thread.agent_name, thread.cursor_agent_id, prompt.content);
+    const { data: retry, error: retryError } = await context.supabase
+      .from("cursor_messages")
+      .insert({ thread_id: thread.id, user_id: context.userId, cursor_run_id: retryRunId, content: prompt.content, retry_of_run_id: data.cursorRunId })
+      .select("id, created_at")
+      .single();
+    if (retryError || !retry) throw new Error("Could not retry response");
+    const { error: updateError } = await context.supabase
+      .from("cursor_threads")
+      .update({ active_run_id: retryRunId, updated_at: new Date().toISOString() })
+      .eq("id", thread.id)
+      .eq("user_id", context.userId);
+    if (updateError) throw new Error("Could not update conversation");
+    return { promptId: retry.id, cursorAgentId: thread.cursor_agent_id, cursorRunId: retryRunId };
   });
 
 /**
