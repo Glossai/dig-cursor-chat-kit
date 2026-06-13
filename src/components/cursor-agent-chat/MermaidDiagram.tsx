@@ -14,12 +14,23 @@ export function MermaidDiagram({ code }: { code: string }) {
     const id = `cursor-mermaid-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
     void import("mermaid").then(async ({ default: mermaid }) => {
       mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "neutral" });
+      const parsed = await mermaid.parse(code, { suppressErrors: true });
+      if (!parsed) {
+        if (!cancelled) setState({ status: "error" });
+        return;
+      }
       const result = await mermaid.render(id, code);
       if (!cancelled) setState({ status: "ready", svg: result.svg });
     }).catch(() => {
+      document.getElementById(id)?.remove();
+      document.getElementById(`d${id}`)?.remove();
       if (!cancelled) setState({ status: "error" });
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      document.getElementById(id)?.remove();
+      document.getElementById(`d${id}`)?.remove();
+    };
   }, [code, reactId]);
 
   if (state.status === "ready") {

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useThread } from "@assistant-ui/react";
@@ -56,7 +56,13 @@ export function CursorThreadSidebar({
   const threads = useQuery({
     queryKey: ["cursor-threads", agentName, query, showArchived],
     queryFn: () => list({ data: { agentName, query: query || undefined, archived: showArchived } }),
+    refetchInterval: (result) => result.state.data?.some((thread) => thread.active_run_id) ? 2_000 : false,
   });
+  useEffect(() => {
+    const refreshThreads = () => void queryClient.invalidateQueries({ queryKey: ["cursor-threads", agentName] });
+    window.addEventListener("cursor-thread-updated", refreshThreads);
+    return () => window.removeEventListener("cursor-thread-updated", refreshThreads);
+  }, [agentName, queryClient]);
   const createMutation = useMutation({
     mutationFn: () => create({ data: { agentName, title: "New conversation" } }),
     onSuccess: async (thread) => {
@@ -202,7 +208,7 @@ function StaticDot({ thread }: { thread: CursorThreadType }) {
     ? "pending"
     : thread.last_status === "error"
       ? "error"
-      : thread.last_status === "complete"
+      : thread.cursor_agent_id
         ? "ok"
         : "idle";
   return <Dot tone={tone} />;

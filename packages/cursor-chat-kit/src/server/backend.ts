@@ -120,6 +120,7 @@ export function createCursorChatBackend(options: CursorChatBackendOptions) {
       return threads.map((thread) => ({
         ...thread,
         last_status: lastByThread.get(thread.id) ?? null,
+        unread: Boolean((!thread.last_viewed_at || new Date(thread.updated_at) > new Date(thread.last_viewed_at)) && !thread.active_run_id),
       }));
     },
 

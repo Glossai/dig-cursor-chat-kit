@@ -1,11 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Download, RefreshCw, Square, WrapText } from "lucide-react";
 import {
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
-  useComposer,
-  useComposerRuntime,
   useMessage,
 } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
@@ -117,22 +115,10 @@ function RetryResponse({ threadId, cursorRunId }: { threadId: string; cursorRunI
   return <Button variant="outline" size="sm" className="mt-2" onClick={() => void retry(cursorRunId)}><RefreshCw />Retry response</Button>;
 }
 
-function DraftKeeper({ threadId }: { threadId: string }) {
-  const text = useComposer((state) => state.text);
-  const composer = useComposerRuntime();
-  useEffect(() => { composer.setText(localStorage.getItem(`cursor-chat-draft:${threadId}`) ?? ""); }, [composer, threadId]);
-  useEffect(() => {
-    const key = `cursor-chat-draft:${threadId}`;
-    if (text) localStorage.setItem(key, text);
-    else localStorage.removeItem(key);
-  }, [text, threadId]);
-  return null;
-}
-
 export function CursorThread({ threadId }: { threadId: string }) {
   return (
     <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col bg-background">
-      <DraftKeeper threadId={threadId} /><ThreadPrimitive.Viewport
+      <ThreadPrimitive.Viewport
         className="relative flex min-h-0 flex-1 flex-col overflow-y-auto"
         autoScroll
       >

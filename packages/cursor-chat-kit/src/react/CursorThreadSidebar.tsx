@@ -26,7 +26,24 @@ export function CursorThreadSidebar({ agentName, threadId, labels, classNames, f
   const [threads, setThreads] = useState<CursorThread[]>([]);
   const [query, setQuery] = useState("");
   const [archived, setArchived] = useState(false);
-  useEffect(() => { void client.listThreads({ agentName, query: query || undefined, archived }).then(setThreads); }, [agentName, archived, client, query]);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = async () => {
+      const next = await client.listThreads({ agentName, query: query || undefined, archived });
+      if (cancelled) return;
+      setThreads(next);
+      if (next.some((thread) => thread.active_run_id)) timer = setTimeout(() => void load(), 2_000);
+    };
+    const refresh = () => void load();
+    void load();
+    window.addEventListener("cursor-thread-updated", refresh);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      window.removeEventListener("cursor-thread-updated", refresh);
+    };
+  }, [agentName, archived, client, query]);
   const sortedThreads = [...threads].sort((a, b) => {
     if (Boolean(a.pinned_at) !== Boolean(b.pinned_at)) return a.pinned_at ? -1 : 1;
     return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
@@ -64,7 +81,7 @@ function ThreadStatusDot({ thread, isActive }: { thread: CursorThread; isActive:
   return <StaticDot thread={thread} />;
 }
 function StaticDot({ thread }: { thread: CursorThread }) {
-  const tone = thread.active_run_id ? "pending" : thread.last_status === "error" ? "error" : thread.last_status === "complete" ? "ok" : "idle";
+  const tone = thread.active_run_id ? "pending" : thread.last_status === "error" ? "error" : thread.cursor_agent_id ? "ok" : "idle";
   return <Dot tone={tone} />;
 }
 function LiveDot({ fallback }: { fallback: React.ReactElement }) {
