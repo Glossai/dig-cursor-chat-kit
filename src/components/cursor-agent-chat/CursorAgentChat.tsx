@@ -54,7 +54,7 @@ function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatP
               <OpenInCursorPill threadId={thread.id} initialAgentId={thread.cursor_agent_id} />
             </div>
           </header>
-          {isLoadingThread ? <CursorThreadLoading /> : <CursorThread />}
+          {isLoadingThread ? <CursorThreadLoading /> : <CursorThread threadId={thread.id} />}
         </SidebarInset>
       </SidebarProvider>
     </AssistantRuntimeProvider>
