@@ -39,12 +39,59 @@ Start project.
    @source "../node_modules/@lovable/cursor-chat-kit/dist";
    ```
 
-8. Mount `CursorChatProvider` and `CursorAgentChat` with the route-derived
-   hydrated thread. Keep dedicated thread URLs and host-owned navigation.
+8. Mount `CursorChatProvider` and `CursorAgentChat` with a URL-derived active
+   thread. `navigateToThread` MUST use its `threadId` argument, the loader MUST
+   read that ID from the URL rather than always selecting the first row, and
+   reloading the URL MUST restore the same thread. Use this path-param pattern:
+
+   ```tsx
+   // src/routes/_authenticated/chat.$threadId.tsx
+   import { createFileRoute } from "@tanstack/react-router";
+   import { CursorAgentChat } from "@lovable/cursor-chat-kit/react";
+   import { getCursorThread } from "@/lib/cursor/chat.functions";
+
+   export const Route = createFileRoute("/_authenticated/chat/$threadId")({
+     loader: ({ params }) => getCursorThread({ data: { threadId: params.threadId } }),
+     component: ChatPage,
+   });
+
+   function ChatPage() {
+     const data = Route.useLoaderData();
+     return <CursorAgentChat agentName="my-agent" data={data} />;
+   }
+   ```
+
+   ```tsx
+   // src/routes/_authenticated/chat.index.tsx
+   import { createFileRoute, redirect } from "@tanstack/react-router";
+   import { createCursorThread, listCursorThreads } from "@/lib/cursor/chat.functions";
+
+   export const Route = createFileRoute("/_authenticated/chat/")({
+     beforeLoad: async () => {
+       const threads = await listCursorThreads({ data: { agentName: "my-agent" } });
+       const thread = threads[0] ?? await createCursorThread({
+         data: { agentName: "my-agent", title: "New conversation" },
+       });
+       throw redirect({ to: "/chat/$threadId", params: { threadId: thread.id } });
+     },
+   });
+   ```
+
+   ```tsx
+   const navigate = useNavigate();
+   const client: CursorChatClient = {
+     // ...database and messaging adapters
+     navigateToThread: (threadId) =>
+       navigate({ to: "/chat/$threadId", params: { threadId } }),
+   };
+   ```
 
 ## Verify
 
 - Create two threads, send a message in each, switch, and reload each URL.
+- Open thread A, send a message, and switch to thread B mid-run. Confirm both
+  threads' state is preserved, switching is instant, and reloading either URL
+  restores that thread.
 - Confirm optimistic user text and the thinking indicator appear before
   streamed assistant text.
 - Confirm markdown code blocks use syntax highlighting and copy works.
