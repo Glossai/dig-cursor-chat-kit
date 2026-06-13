@@ -1,7 +1,6 @@
 import { AssistantRuntimeProvider, useThread } from "@assistant-ui/react";
 import { ExternalLink } from "lucide-react";
 import type { CursorThreadHydrated } from "../types";
-import { useCursorChatClient } from "./context";
 import { useCursorRuntime, useCursorThreadAgentId } from "./runtime";
 import { CursorThread } from "./CursorThread";
 import { CursorThreadSidebar } from "./CursorThreadSidebar";

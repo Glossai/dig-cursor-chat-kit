@@ -17,7 +17,10 @@ const emit = (store: Store) => store.listeners.forEach((listener) => listener())
 
 function getStore(id: string, messages: CursorHydratedMessage[], agentId: string | null) {
   const existing = stores.get(id);
-  if (existing) return existing;
+  if (existing) {
+    if (!existing.agentId && agentId) existing.agentId = agentId;
+    return existing;
+  }
   const store: Store = { agentId, messages, running: false, active: null, listeners: new Set() };
   stores.set(id, store);
   return store;
@@ -63,9 +66,11 @@ async function stream(client: ReturnType<typeof useCursorChatClient>, store: Sto
       ? { status: "cancelled" }
       : { status: "error", errorMessage: error instanceof Error ? error.message : "Stream failed" });
   } finally {
-    store.active = null;
-    store.running = false;
-    emit(store);
+    if (store.active?.abort === abort) {
+      store.active = null;
+      store.running = false;
+      emit(store);
+    }
   }
 }
 
@@ -87,7 +92,7 @@ export function useCursorRuntime(args: { threadId: string; agentId: string | nul
   useEffect(() => {
     if (!store.active && args.initialMessages.length > store.messages.length) {
       store.messages = args.initialMessages;
-      store.agentId = args.agentId;
+      store.agentId = args.agentId ?? store.agentId;
       emit(store);
     }
   }, [args.agentId, args.initialMessages, store]);
