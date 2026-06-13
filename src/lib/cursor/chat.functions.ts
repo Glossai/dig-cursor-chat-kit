@@ -14,13 +14,29 @@ const cursorId = z.string().regex(/^(bc|run)-[a-zA-Z0-9-]+$/);
 
 export const listCursorThreads = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ agentName }))
+  .inputValidator(z.object({ agentName, query: z.string().trim().max(160).optional(), archived: z.boolean().default(false) }))
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
+    let matchingIds: string[] | null = null;
+    if (data.query) {
+      const { data: matches, error: searchError } = await context.supabase
+        .from("cursor_messages")
+        .select("thread_id")
+        .ilike("content", `%${data.query}%`);
+      if (searchError) throw new Error("Could not search conversations");
+      matchingIds = [...new Set((matches ?? []).map((row) => row.thread_id))];
+    }
+    let request = context.supabase
       .from("cursor_threads")
-      .select("id, agent_name, cursor_agent_id, title, created_at, updated_at, active_run_id")
+      .select("id, agent_name, cursor_agent_id, title, created_at, updated_at, active_run_id, pinned_at, archived_at, last_viewed_at")
       .eq("agent_name", data.agentName)
+      .order("pinned_at", { ascending: false, nullsFirst: false })
       .order("updated_at", { ascending: false });
+    request = data.archived ? request.not("archived_at", "is", null) : request.is("archived_at", null);
+    if (data.query) {
+      const escaped = data.query.replace(/[%_,()]/g, "");
+      request = request.or(`title.ilike.%${escaped}%,id.in.(${(matchingIds ?? []).join(",") || "00000000-0000-0000-0000-000000000000"})`);
+    }
+    const { data: rows, error } = await request;
     if (error) throw new Error("Could not load conversations");
     const threads = (rows ?? []) as Array<CursorThread & { active_run_id: string | null }>;
     const ids = threads.map((t) => t.id);
@@ -39,6 +55,7 @@ export const listCursorThreads = createServerFn({ method: "GET" })
     return threads.map((t) => ({
       ...t,
       last_status: lastByThread.get(t.id) ?? null,
+      unread: Boolean(t.last_viewed_at && new Date(t.updated_at) > new Date(t.last_viewed_at) && !t.active_run_id),
     })) as CursorThread[];
   });
 
