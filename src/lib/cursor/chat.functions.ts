@@ -366,7 +366,7 @@ export const retryCursorMessage = createServerFn({ method: "POST" })
     if (retryError || !retry) throw new Error("Could not retry response");
     const { error: updateError } = await context.supabase
       .from("cursor_threads")
-      .update({ active_run_id: retryRunId, updated_at: new Date().toISOString() })
+      .update({ active_run_id: retryRunId })
       .eq("id", thread.id)
       .eq("user_id", context.userId);
     if (updateError) throw new Error("Could not update conversation");
