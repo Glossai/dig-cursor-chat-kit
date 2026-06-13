@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useThread } from "@assistant-ui/react";
-import { Archive, Home, MessageSquare, MoreHorizontal, Pencil, Pin, Plus, Search, Trash2 } from "lucide-react";
+import { Archive, ChevronDown, ChevronRight, Home, MessageSquare, MoreHorizontal, Pencil, Pin, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CursorThread as CursorThreadType } from "@/lib/cursor/types";
@@ -53,6 +53,7 @@ export function CursorThreadSidebar({
   const [showArchived, setShowArchived] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ pinned: true, today: true, yesterday: true, earlier: false });
   const threads = useQuery({
     queryKey: ["cursor-threads", agentName, query, showArchived],
     queryFn: () => list({ data: { agentName, query: query || undefined, archived: showArchived } }),
@@ -91,10 +92,16 @@ export function CursorThreadSidebar({
     mutationFn: ({ id, pinned, archived }: { id: string; pinned?: boolean; archived?: boolean }) => updateState({ data: { threadId: id, pinned, archived } }),
     onSuccess: refresh,
   });
-  const sortedThreads = [...(threads.data ?? [])].sort((a, b) => {
-    if (Boolean(a.pinned_at) !== Boolean(b.pinned_at)) return a.pinned_at ? -1 : 1;
-    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-  });
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 86_400_000;
+  const sortedThreads = [...(threads.data ?? [])].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  const sections = [
+    { id: "pinned", label: "Pinned", threads: sortedThreads.filter((thread) => Boolean(thread.pinned_at)) },
+    { id: "today", label: "Today", threads: sortedThreads.filter((thread) => !thread.pinned_at && new Date(thread.updated_at).getTime() >= todayStart) },
+    { id: "yesterday", label: "Yesterday", threads: sortedThreads.filter((thread) => { const time = new Date(thread.updated_at).getTime(); return !thread.pinned_at && time >= yesterdayStart && time < todayStart; }) },
+    { id: "earlier", label: "Earlier", threads: sortedThreads.filter((thread) => !thread.pinned_at && new Date(thread.updated_at).getTime() < yesterdayStart) },
+  ].filter((section) => section.threads.length > 0);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -123,8 +130,10 @@ export function CursorThreadSidebar({
       </SidebarHeader>
       <SidebarContent className="p-2">
         {!collapsed && <div className="mb-2 space-y-2"><div className="relative"><Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search threads" className="h-8 pl-8" /></div><Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setShowArchived((value) => !value)}><Archive />{showArchived ? "Active threads" : "Archived"}</Button></div>}
-        <SidebarMenu>
-          {sortedThreads.map((thread) => (
+        {sections.map((section) => <div key={section.id} className="mb-2">
+          {!collapsed && <Button variant="ghost" size="sm" className="mb-1 w-full justify-start px-2 text-xs font-medium text-muted-foreground" onClick={() => setOpenSections((current) => ({ ...current, [section.id]: !current[section.id] }))} aria-expanded={openSections[section.id]}>{openSections[section.id] ? <ChevronDown /> : <ChevronRight />}{section.label}<span className="ml-auto tabular-nums">{section.threads.length}</span></Button>}
+          {(collapsed || openSections[section.id]) && <SidebarMenu>
+          {section.threads.map((thread) => (
             <SidebarMenuItem key={thread.id} className="group/item flex items-center">
               <SidebarMenuButton asChild isActive={thread.id === threadId} tooltip={thread.title}>
                 <Link
@@ -168,7 +177,8 @@ export function CursorThreadSidebar({
               )}
             </SidebarMenuItem>
           ))}
-        </SidebarMenu>
+        </SidebarMenu>}
+        </div>)}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <Button asChild variant="ghost" size={collapsed ? "icon" : "sm"} className="w-full">
