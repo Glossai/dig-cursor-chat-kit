@@ -55,7 +55,7 @@ export const listCursorThreads = createServerFn({ method: "GET" })
     return threads.map((t) => ({
       ...t,
       last_status: lastByThread.get(t.id) ?? null,
-      unread: Boolean(t.last_viewed_at && new Date(t.updated_at) > new Date(t.last_viewed_at) && !t.active_run_id),
+      unread: Boolean((!t.last_viewed_at || new Date(t.updated_at) > new Date(t.last_viewed_at)) && !t.active_run_id),
     })) as CursorThread[];
   });
 

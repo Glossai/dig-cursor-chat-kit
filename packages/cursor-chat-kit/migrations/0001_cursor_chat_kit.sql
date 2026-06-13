@@ -42,7 +42,20 @@ CREATE POLICY "Users can delete their cursor threads" ON public.cursor_threads F
 CREATE INDEX cursor_threads_user_agent_updated_idx ON public.cursor_threads (user_id, agent_name, updated_at DESC);
 CREATE INDEX cursor_threads_user_agent_active_idx ON public.cursor_threads (user_id, agent_name, pinned_at DESC NULLS LAST, updated_at DESC) WHERE archived_at IS NULL;
 CREATE INDEX cursor_threads_user_archived_idx ON public.cursor_threads (user_id, archived_at DESC) WHERE archived_at IS NOT NULL;
-CREATE TRIGGER cursor_threads_set_updated_at BEFORE UPDATE ON public.cursor_threads FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+CREATE OR REPLACE FUNCTION public.set_cursor_thread_updated_at()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  IF ROW(NEW.agent_name, NEW.cursor_agent_id, NEW.title, NEW.active_run_id, NEW.pinned_at, NEW.archived_at)
+     IS DISTINCT FROM
+     ROW(OLD.agent_name, OLD.cursor_agent_id, OLD.title, OLD.active_run_id, OLD.pinned_at, OLD.archived_at) THEN
+    NEW.updated_at = now();
+  ELSE
+    NEW.updated_at = OLD.updated_at;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER cursor_threads_set_updated_at BEFORE UPDATE ON public.cursor_threads FOR EACH ROW EXECUTE FUNCTION public.set_cursor_thread_updated_at();
 
 -- user prompts --------------------------------------------------------------
 CREATE TABLE public.cursor_messages (
