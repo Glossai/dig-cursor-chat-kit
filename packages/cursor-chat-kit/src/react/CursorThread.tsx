@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Download, RefreshCw, Square, WrapText } from "lucide-react";
-import { ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useComposer, useComposerRuntime, useMessage } from "@assistant-ui/react";
+import { ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useMessage } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
 import { HighlightedCode } from "./HighlightedCode";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { useRetryCursorResponse } from "./runtime";
-import { MermaidDiagram } from "./MermaidDiagram";
 import { Button } from "./ui/button";
 import { cn } from "./ui/utils";
 import type { CursorChatClassNames, CursorChatFeatures, CursorChatLabels, CursorChatSlots } from "./customization";
@@ -72,22 +71,10 @@ function RetryResponse({ threadId, cursorRunId }: { threadId: string; cursorRunI
   return <Button variant="outline" size="sm" className="mt-2" onClick={() => void retry(cursorRunId)}><RefreshCw />Retry response</Button>;
 }
 
-function DraftKeeper({ threadId }: { threadId: string }) {
-  const text = useComposer((state) => state.text);
-  const composer = useComposerRuntime();
-  useEffect(() => { composer.setText(localStorage.getItem(`cursor-chat-draft:${threadId}`) ?? ""); }, [composer, threadId]);
-  useEffect(() => {
-    const key = `cursor-chat-draft:${threadId}`;
-    if (text) localStorage.setItem(key, text);
-    else localStorage.removeItem(key);
-  }, [text, threadId]);
-  return null;
-}
-
 export function CursorThread(props: ThreadProps & { threadId: string }) {
   const EmptyState = props.slots.emptyState;
   return <ThreadPrimitive.Root className={cn("flex min-h-0 flex-1 flex-col bg-background", props.classNames.thread)}>
-    <DraftKeeper threadId={props.threadId} /><ThreadPrimitive.Viewport className="relative flex min-h-0 flex-1 flex-col overflow-y-auto" autoScroll>
+    <ThreadPrimitive.Viewport className="relative flex min-h-0 flex-1 flex-col overflow-y-auto" autoScroll>
       <ThreadPrimitive.Empty>{EmptyState ? <EmptyState /> : <div className={cn("m-auto max-w-lg px-6 py-24 text-center", props.classNames.emptyState)}><h2 className="text-3xl font-semibold tracking-tight">{props.labels.emptyTitle}</h2><p className="mt-3 text-sm text-muted-foreground">{props.labels.emptyDescription}</p></div>}</ThreadPrimitive.Empty>
       <div className={cn("mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8", props.classNames.messages)}><ThreadPrimitive.Messages components={{ Message: () => <ChatMessage {...props} threadId={props.threadId} /> }} /></div>
       <ThreadPrimitive.ScrollToBottom asChild><Button className="absolute bottom-32 left-1/2 size-8 -translate-x-1/2 rounded-full shadow-md" size="icon" variant="outline" aria-label="Scroll to latest"><ArrowDown className="size-4" /></Button></ThreadPrimitive.ScrollToBottom>

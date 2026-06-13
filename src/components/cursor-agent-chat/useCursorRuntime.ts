@@ -31,6 +31,10 @@ type ThreadStore = {
 
 const stores = new Map<string, ThreadStore>();
 
+function notifyThreadList(threadId: string) {
+  window.dispatchEvent(new CustomEvent("cursor-thread-updated", { detail: { threadId } }));
+}
+
 /** Subscribe to the live agentId for a thread (updates after first send). */
 export function useCursorThreadAgentId(threadId: string, fallback: string | null) {
   const store = stores.get(threadId);
@@ -125,6 +129,7 @@ async function runStreamLoop(
     if (store.activeRun?.runId === runId) store.activeRun = null;
     store.isRunning = false;
     notify(store);
+    notifyThreadList(store.threadId);
   }
 }
 
@@ -289,6 +294,7 @@ export function useCursorRuntime({
         return m;
       });
       notify(store);
+      notifyThreadList(threadId);
 
       await runStreamLoop(
         store,

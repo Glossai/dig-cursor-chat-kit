@@ -14,6 +14,7 @@ type Store = {
 };
 const stores = new Map<string, Store>();
 const emit = (store: Store) => store.listeners.forEach((listener) => listener());
+const notifyThreadList = (threadId: string) => window.dispatchEvent(new CustomEvent("cursor-thread-updated", { detail: { threadId } }));
 
 function getStore(id: string, messages: CursorHydratedMessage[], agentId: string | null) {
   const existing = stores.get(id);
@@ -45,7 +46,7 @@ function patch(store: Store, id: string, values: Partial<Extract<CursorHydratedM
   emit(store);
 }
 
-async function stream(client: ReturnType<typeof useCursorChatClient>, store: Store, agentId: string, runId: string, assistantId: string) {
+async function stream(client: ReturnType<typeof useCursorChatClient>, threadId: string, store: Store, agentId: string, runId: string, assistantId: string) {
   const abort = new AbortController();
   store.active = { agentId, runId, abort };
   store.running = true;
@@ -70,6 +71,7 @@ async function stream(client: ReturnType<typeof useCursorChatClient>, store: Sto
       store.active = null;
       store.running = false;
       emit(store);
+      notifyThreadList(threadId);
     }
   }
 }
@@ -99,7 +101,7 @@ export function useCursorRuntime(args: { threadId: string; agentId: string | nul
   useEffect(() => {
     if (!args.liveRunId || !args.agentId || store.active) return;
     const assistantId = `asst-${args.liveRunId}`;
-    if (store.messages.some((message) => message.id === assistantId)) void stream(client, store, args.agentId, args.liveRunId, assistantId);
+    if (store.messages.some((message) => message.id === assistantId)) void stream(client, args.threadId, store, args.agentId, args.liveRunId, assistantId);
   }, [args.agentId, args.liveRunId, client, store]);
 
   const onNew = useCallback(async (message: AppendMessage) => {
@@ -123,7 +125,8 @@ export function useCursorRuntime(args: { threadId: string; agentId: string | nul
         ? { ...item, id: `user-${started.promptId}`, cursor_run_id: started.cursorRunId }
         : item.id === assistantId ? { ...item, id: permanentAssistantId, cursor_run_id: started.cursorRunId } : item);
       emit(store);
-      await stream(client, store, started.cursorAgentId, started.cursorRunId, permanentAssistantId);
+      notifyThreadList(args.threadId);
+      await stream(client, args.threadId, store, started.cursorAgentId, started.cursorRunId, permanentAssistantId);
     } catch (error) {
       patch(store, assistantId, { status: "error", errorMessage: error instanceof Error ? error.message : "Cursor request failed" });
       store.running = false;
@@ -162,7 +165,8 @@ export function useRetryCursorResponse(threadId: string) {
       store.messages = store.messages.map((message) => message.id === assistantId ? { ...message, id: permanentId, cursor_run_id: started.cursorRunId } : message);
       store.agentId = started.cursorAgentId;
       emit(store);
-      await stream(client, store, started.cursorAgentId, started.cursorRunId, permanentId);
+      notifyThreadList(threadId);
+      await stream(client, threadId, store, started.cursorAgentId, started.cursorRunId, permanentId);
     } catch (error) {
       patch(store, assistantId, { status: "error", errorMessage: error instanceof Error ? error.message : "Retry failed" });
       store.running = false;
