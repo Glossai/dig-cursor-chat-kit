@@ -18,7 +18,7 @@ type ThreadProps = {
   features: Required<CursorChatFeatures>;
 };
 
-function CodeBlock({ language, code }: { language?: string; code: string }) {
+function CodeViewer({ language, code }: { language?: string; code: string }) {
   const [copied, setCopied] = useState(false);
   const [wrapped, setWrapped] = useState(false);
   const [collapsed, setCollapsed] = useState(code.split("\n").length > 40);
@@ -57,8 +57,8 @@ function ChatMessage({ labels, classNames, slots, features, threadId }: ThreadPr
       const match = /language-(\w+)/.exec(className ?? "");
       if (!match) return <code className={className} {...rest}>{children}</code>;
       const code = String(children ?? "").replace(/\n$/, "");
-      const CodeBlock = slots.codeBlock;
-      return CodeBlock ? <div className="my-4 overflow-hidden rounded-lg"><CodeBlock code={code} language={match[1]} /></div> : features.codeHighlighting ? <CodeBlock language={match[1]} code={code} /> : <pre className="overflow-x-auto rounded-lg border border-border bg-muted/40 p-4 text-sm"><code>{code}</code></pre>;
+      const SlotCodeBlock = slots.codeBlock;
+      return SlotCodeBlock ? <div className="my-4 overflow-hidden rounded-lg"><SlotCodeBlock code={code} language={match[1]} /></div> : features.codeHighlighting ? <CodeViewer language={match[1]} code={code} /> : <pre className="overflow-x-auto rounded-lg border border-border bg-muted/40 p-4 text-sm"><code>{code}</code></pre>;
     },
   }} />;
   return <MessagePrimitive.Root className={cn(role === "user" ? "ml-auto w-fit max-w-[80%] rounded-3xl bg-muted px-5 py-2.5 text-foreground" : "mr-auto w-full max-w-full py-2 text-foreground", role === "user" ? classNames.userMessage : classNames.assistantMessage)}>
