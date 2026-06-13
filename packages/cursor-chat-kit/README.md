@@ -131,5 +131,7 @@ const client: CursorChatClient = {
 
 The `loading` prop replaces only the conversation viewport with the kit's
 loading shell while keeping the sidebar and header mounted and interactive.
+Selecting a sidebar thread also updates the default header title immediately,
+before the destination loader resolves.
 Do not use a route-level `pendingComponent` for thread changes, because that
 replaces the entire chat shell.

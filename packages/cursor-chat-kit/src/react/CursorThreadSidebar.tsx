@@ -15,9 +15,10 @@ type SidebarProps = {
   labels: Required<CursorChatLabels>;
   classNames: CursorChatClassNames;
   features: Required<CursorChatFeatures>;
+  onSelectThread?: (thread: CursorThread) => void;
 };
 
-export function CursorThreadSidebar({ agentName, threadId, labels, classNames, features }: SidebarProps) {
+export function CursorThreadSidebar({ agentName, threadId, labels, classNames, features, onSelectThread }: SidebarProps) {
   const client = useCursorChatClient();
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
@@ -44,7 +45,7 @@ export function CursorThreadSidebar({ agentName, threadId, labels, classNames, f
       <Button variant="outline" size={collapsed ? "icon" : "sm"} className="mt-2 w-full" onClick={() => void create()}><Plus />{!collapsed && labels.newThread}</Button>
     </SidebarHeader>
     <SidebarContent className="p-2"><SidebarMenu>{threads.map((thread) => <SidebarMenuItem key={thread.id} className="group/item flex items-center">
-      <SidebarMenuButton isActive={thread.id === threadId} tooltip={thread.title} onClick={() => { if (isMobile) setOpenMobile(false); void client.navigateToThread(thread.id); }} className="flex min-w-0 flex-1 items-center gap-2"><ThreadStatusDot thread={thread} isActive={thread.id === threadId} /><MessageSquare /><span className="truncate">{thread.title}</span></SidebarMenuButton>
+      <SidebarMenuButton isActive={thread.id === threadId} tooltip={thread.title} onClick={() => { onSelectThread?.(thread); if (isMobile) setOpenMobile(false); void client.navigateToThread(thread.id); }} className="flex min-w-0 flex-1 items-center gap-2"><ThreadStatusDot thread={thread} isActive={thread.id === threadId} /><MessageSquare /><span className="truncate">{thread.title}</span></SidebarMenuButton>
       {!collapsed && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-8 opacity-0 group-hover/item:opacity-100" aria-label={`Options for ${thread.title}`}><MoreHorizontal /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem className="text-destructive" onClick={() => void remove(thread.id)}><Trash2 />{labels.deleteThread}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
     </SidebarMenuItem>)}</SidebarMenu></SidebarContent>
     {features.homeNavigation && client.navigateHome && <SidebarFooter className="border-t border-sidebar-border p-3"><Button variant="ghost" size={collapsed ? "icon" : "sm"} className="w-full" onClick={() => void client.navigateHome?.()}><Home />{!collapsed && labels.home}</Button></SidebarFooter>}

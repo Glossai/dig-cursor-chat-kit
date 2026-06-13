@@ -96,7 +96,8 @@ Start project.
 - Create two threads, send a message in each, switch, and reload each URL.
 - Throttle the thread loader, click another thread, and confirm the URL and
   conversation loading shell update immediately while the sidebar and header
-  remain unchanged and interactive.
+  remain unchanged and interactive. Confirm the header title switches to the
+  selected thread immediately, before its loader resolves.
 - Open thread A, send a message, and switch to thread B mid-run. Confirm both
   threads' state is preserved, switching is instant, and reloading either URL
   restores that thread.

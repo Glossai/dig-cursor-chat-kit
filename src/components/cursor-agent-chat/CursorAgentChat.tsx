@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { AssistantRuntimeProvider, useThread } from "@assistant-ui/react";
 import { useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useCursorThreadAgentId } from "./useCursorRuntime";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import type { CursorThreadHydrated } from "@/lib/cursor/types";
@@ -29,6 +30,8 @@ export function CursorAgentChat({ agentName, data, className }: CursorAgentChatP
 function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatProps) {
   const isLoadingThread = useRouterState({ select: (state) => state.status === "pending" });
   const { thread, messages, liveRunId } = data;
+  const [optimisticTitle, setOptimisticTitle] = useState(thread.title);
+  useEffect(() => setOptimisticTitle(thread.title), [thread.id, thread.title]);
   const runtime = useCursorRuntime({
     threadId: thread.id,
     agentId: thread.cursor_agent_id,
@@ -38,13 +41,13 @@ function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatP
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <SidebarProvider className={className}>
-        <CursorThreadSidebar agentName={agentName} threadId={thread.id} />
+        <CursorThreadSidebar agentName={agentName} threadId={thread.id} onSelectThread={(selected) => setOptimisticTitle(selected.title)} />
         <SidebarInset className="min-h-svh overflow-hidden bg-background">
           <header className="flex h-14 shrink-0 items-center justify-between border-b px-3">
             <div className="flex min-w-0 items-center gap-2">
               <SidebarTrigger />
               <div className="min-w-0">
-                <h1 className="truncate text-sm font-semibold">{thread.title}</h1>
+                <h1 className="truncate text-sm font-semibold">{optimisticTitle}</h1>
               </div>
             </div>
             <div className="flex items-center gap-2">
