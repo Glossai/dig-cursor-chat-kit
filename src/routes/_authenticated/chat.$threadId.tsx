@@ -1,15 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CursorAgentChat } from "@/components/cursor-agent-chat/CursorAgentChat";
-import { CursorAgentChatLoading } from "@/components/cursor-agent-chat/CursorAgentChatLoading";
 import { getCursorThread } from "@/lib/cursor/chat.functions";
 
 const AGENT_NAME = "demo-agent";
 
 export const Route = createFileRoute("/_authenticated/chat/$threadId")({
   loader: ({ params }) => getCursorThread({ data: { threadId: params.threadId } }),
-  pendingMs: 0,
-  pendingMinMs: 250,
-  pendingComponent: CursorAgentChatLoading,
   component: ChatPage,
   errorComponent: ({ error }) => (
     <div className="grid min-h-svh place-items-center bg-background p-6 text-center">

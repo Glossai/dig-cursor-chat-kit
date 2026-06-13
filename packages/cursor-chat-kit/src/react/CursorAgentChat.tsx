@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import type { CursorThreadHydrated } from "../types";
 import { useCursorRuntime, useCursorThreadAgentId } from "./runtime";
 import { CursorThread } from "./CursorThread";
+import { CursorThreadLoading } from "./CursorThreadLoading";
 import { CursorThreadSidebar } from "./CursorThreadSidebar";
 import { defaultCursorChatFeatures, defaultCursorChatLabels, type CursorChatClassNames, type CursorChatFeatures, type CursorChatLabels, type CursorChatSlots } from "./customization";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar";
@@ -17,6 +18,7 @@ export type CursorAgentChatProps = {
   classNames?: CursorChatClassNames;
   slots?: CursorChatSlots;
   features?: CursorChatFeatures;
+  loading?: boolean;
 };
 
 function StatusLink({ threadId, initialAgentId, label }: { threadId: string; initialAgentId: string | null; label: string }) {
@@ -29,7 +31,7 @@ function StatusLink({ threadId, initialAgentId, label }: { threadId: string; ini
     : <span aria-disabled className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-full border px-3 py-1 text-xs text-muted-foreground">{content}</span>;
 }
 
-function Chat({ agentName, data, title, className, labels: labelOverrides, classNames = {}, slots = {}, features: featureOverrides }: CursorAgentChatProps) {
+function Chat({ agentName, data, title, className, labels: labelOverrides, classNames = {}, slots = {}, features: featureOverrides, loading = false }: CursorAgentChatProps) {
   const { thread, messages, liveRunId } = data;
   const runtime = useCursorRuntime({ threadId: thread.id, agentId: thread.cursor_agent_id, initialMessages: messages, liveRunId });
   const labels = { ...defaultCursorChatLabels, ...labelOverrides };
@@ -41,7 +43,7 @@ function Chat({ agentName, data, title, className, labels: labelOverrides, class
       {features.sidebar && <CursorThreadSidebar agentName={agentName} threadId={thread.id} labels={labels} classNames={classNames} features={features} />}
       <SidebarInset className="min-h-svh overflow-hidden bg-background">
         {Header ? <Header thread={thread} status={status} /> : <header className={cn("flex h-14 shrink-0 items-center justify-between border-b px-3", classNames.header)}><div className="flex min-w-0 items-center gap-2">{features.sidebar && <SidebarTrigger />}<h1 className="truncate text-sm font-semibold">{title ?? thread.title}</h1></div>{status}</header>}
-        <CursorThread labels={labels} classNames={classNames} slots={slots} features={features} />
+        {loading ? <CursorThreadLoading /> : <CursorThread labels={labels} classNames={classNames} slots={slots} features={features} />}
       </SidebarInset>
     </SidebarProvider>
   </AssistantRuntimeProvider>;
