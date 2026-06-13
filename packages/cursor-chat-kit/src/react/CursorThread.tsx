@@ -50,7 +50,7 @@ function ChatMessage({ labels, classNames, slots, features, threadId }: ThreadPr
   const role = useMessage((state) => state.role);
   const messageId = useMessage((state) => state.id);
   const status = useMessage((state) => state.status);
-  const cursorRunId = messageId.startsWith("asst-") ? messageId.slice(5) : null;
+  const cursorRunId = /^asst-((?:bc|run)-[a-zA-Z0-9-]+)$/.exec(messageId)?.[1] ?? null;
   const AssistantMarkdown = () => <MarkdownTextPrimitive className="cursor-markdown" remarkPlugins={[remarkGfm]} components={{
     pre: ({ children }) => <>{children}</>,
     code: ({ className, children, ...rest }) => {

@@ -87,7 +87,7 @@ function ChatMessage({ threadId }: { threadId: string }) {
   const role = useMessage((state) => state.role);
   const messageId = useMessage((state) => state.id);
   const status = useMessage((state) => state.status);
-  const cursorRunId = messageId.startsWith("asst-") ? messageId.slice(5) : null;
+  const cursorRunId = /^asst-((?:bc|run)-[a-zA-Z0-9-]+)$/.exec(messageId)?.[1] ?? null;
   return (
     <MessagePrimitive.Root
       className={
