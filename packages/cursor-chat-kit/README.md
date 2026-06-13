@@ -82,21 +82,19 @@ Use a path-param route for the thread page:
 
 ```tsx
 // src/routes/_authenticated/chat.$threadId.tsx
-import { createFileRoute } from "@tanstack/react-router";
-import { CursorAgentChat, CursorAgentChatLoading } from "@lovable/cursor-chat-kit/react";
+import { createFileRoute, useRouterState } from "@tanstack/react-router";
+import { CursorAgentChat } from "@lovable/cursor-chat-kit/react";
 import { getCursorThread } from "@/lib/cursor/chat.functions";
 
 export const Route = createFileRoute("/_authenticated/chat/$threadId")({
   loader: ({ params }) => getCursorThread({ data: { threadId: params.threadId } }),
-  pendingMs: 0,
-  pendingMinMs: 250,
-  pendingComponent: CursorAgentChatLoading,
   component: ChatPage,
 });
 
 function ChatPage() {
   const data = Route.useLoaderData();
-  return <CursorAgentChat agentName="my-agent" data={data} />;
+  const loading = useRouterState({ select: (state) => state.status === "pending" });
+  return <CursorAgentChat agentName="my-agent" data={data} loading={loading} />;
 }
 ```
 
@@ -129,8 +127,7 @@ const client: CursorChatClient = {
 };
 ```
 
-`pendingMs: 0` makes the destination render immediately after a click instead
-of leaving the previous thread visible while its loader runs. The exported
-`CursorAgentChatLoading` mirrors the default chat layout; `pendingMinMs` avoids
-a distracting flash on very fast loads. Consumers with a custom chat shell may
-provide their own `pendingComponent` instead.
+The `loading` prop replaces only the conversation viewport with the kit's
+loading shell while keeping the sidebar and header mounted and interactive.
+Do not use a route-level `pendingComponent` for thread changes, because that
+replaces the entire chat shell.

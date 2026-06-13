@@ -1,10 +1,12 @@
 import { ExternalLink } from "lucide-react";
 import { AssistantRuntimeProvider, useThread } from "@assistant-ui/react";
+import { useRouterState } from "@tanstack/react-router";
 import { useCursorThreadAgentId } from "./useCursorRuntime";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import type { CursorThreadHydrated } from "@/lib/cursor/types";
 import { CursorThreadSidebar } from "./CursorThreadSidebar";
 import { CursorThread } from "./CursorThread";
+import { CursorThreadLoading } from "./CursorThreadLoading";
 import { useCursorRuntime } from "./useCursorRuntime";
 
 export type CursorAgentChatProps = {
@@ -25,6 +27,7 @@ export function CursorAgentChat({ agentName, data, className }: CursorAgentChatP
 }
 
 function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatProps) {
+  const isLoadingThread = useRouterState({ select: (state) => state.status === "pending" });
   const { thread, messages, liveRunId } = data;
   const runtime = useCursorRuntime({
     threadId: thread.id,
@@ -48,7 +51,7 @@ function CursorAgentChatRuntime({ agentName, data, className }: CursorAgentChatP
               <OpenInCursorPill threadId={thread.id} initialAgentId={thread.cursor_agent_id} />
             </div>
           </header>
-          <CursorThread />
+          {isLoadingThread ? <CursorThreadLoading /> : <CursorThread />}
         </SidebarInset>
       </SidebarProvider>
     </AssistantRuntimeProvider>
