@@ -130,7 +130,7 @@ export const Route = createFileRoute("/api/cursor/stream/$runId")({
               // Clear the thread's pinned active run (only if it still points to us)
               await supabaseAdmin
                 .from("cursor_threads")
-                .update({ active_run_id: null })
+                .update({ active_run_id: null, updated_at: new Date().toISOString() })
                 .eq("id", thread.id)
                 .eq("active_run_id", runId);
               send({ type: "done", text: fullText, usage });

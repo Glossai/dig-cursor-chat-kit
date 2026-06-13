@@ -313,12 +313,10 @@ export const sendCursorMessage = createServerFn({ method: "POST" })
     // can reconnect instantly without listing runs.
     const threadPatch: {
       active_run_id: string;
-      updated_at: string;
       cursor_agent_id?: string;
       title?: string;
     } = {
       active_run_id: cursorRunId,
-      updated_at: new Date().toISOString(),
     };
     if (!thread.cursor_agent_id) {
       threadPatch.cursor_agent_id = cursorAgentId;

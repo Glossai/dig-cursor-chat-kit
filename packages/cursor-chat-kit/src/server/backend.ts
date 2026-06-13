@@ -295,7 +295,6 @@ export function createCursorChatBackend(options: CursorChatBackendOptions) {
       if (promptResult.error || !promptResult.data) throw new Error("Could not save your prompt");
       const patch: Record<string, unknown> = {
         active_run_id: cursorRunId,
-        updated_at: new Date().toISOString(),
       };
       if (!thread.cursor_agent_id) {
         patch.cursor_agent_id = cursorAgentId;
