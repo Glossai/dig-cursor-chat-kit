@@ -78,13 +78,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Cursor Cloud Chat" },
+      { title: "Cursor Cloud Chat Kit" },
       { name: "description", content: "Reusable chat for Cursor Cloud Agents." },
       { name: "author", content: "Cursor Cloud Chat" },
-      { property: "og:title", content: "Cursor Cloud Chat" },
+      { property: "og:title", content: "Cursor Cloud Chat Kit" },
       { property: "og:description", content: "Reusable chat for Cursor Cloud Agents." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Cursor Cloud Chat Kit" },
+      { name: "twitter:description", content: "Reusable chat for Cursor Cloud Agents." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e701eb40-6f3b-48fa-b0e5-7df77e41fde3/id-preview-30c28044--80787032-e45f-4673-a9cd-ac2a1ef5bdd1.lovable.app-1781355843183.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e701eb40-6f3b-48fa-b0e5-7df77e41fde3/id-preview-30c28044--80787032-e45f-4673-a9cd-ac2a1ef5bdd1.lovable.app-1781355843183.png" },
     ],
     links: [
       {
