@@ -85,6 +85,10 @@ export function CursorThreadSidebar({
     mutationFn: ({ id, pinned, archived }: { id: string; pinned?: boolean; archived?: boolean }) => updateState({ data: { threadId: id, pinned, archived } }),
     onSuccess: refresh,
   });
+  const sortedThreads = [...(threads.data ?? [])].sort((a, b) => {
+    if (Boolean(a.pinned_at) !== Boolean(b.pinned_at)) return a.pinned_at ? -1 : 1;
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  });
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -114,7 +118,7 @@ export function CursorThreadSidebar({
       <SidebarContent className="p-2">
         {!collapsed && <div className="mb-2 space-y-2"><div className="relative"><Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search threads" className="h-8 pl-8" /></div><Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setShowArchived((value) => !value)}><Archive />{showArchived ? "Active threads" : "Archived"}</Button></div>}
         <SidebarMenu>
-          {threads.data?.map((thread) => (
+          {sortedThreads.map((thread) => (
             <SidebarMenuItem key={thread.id} className="group/item flex items-center">
               <SidebarMenuButton asChild isActive={thread.id === threadId} tooltip={thread.title}>
                 <Link
@@ -126,7 +130,8 @@ export function CursorThreadSidebar({
                   <ThreadStatusDot thread={thread} isActive={thread.id === threadId} />
                   <MessageSquare />
                   {editingId === thread.id ? <Input autoFocus value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)} onClick={(event) => event.preventDefault()} onKeyDown={(event) => { if (event.key === "Enter" && editingTitle.trim()) renameMutation.mutate({ id: thread.id, title: editingTitle.trim() }); if (event.key === "Escape") setEditingId(null); }} className="h-7" /> : <span className="truncate">{thread.title}</span>}
-                  {thread.unread && <span className="ml-auto size-2 rounded-full bg-primary" aria-label="Unread" />}
+                   {thread.pinned_at && <Pin className="ml-auto size-3.5 shrink-0 fill-current text-muted-foreground" aria-label="Pinned" />}
+                   {thread.unread && <span className="size-2 shrink-0 rounded-full bg-primary" aria-label="Unread" />}
                 </Link>
               </SidebarMenuButton>
               {!collapsed && (
