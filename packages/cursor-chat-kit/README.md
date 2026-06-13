@@ -70,3 +70,58 @@ paths. Installing the package never connects to or shares a central database:
 each project applies the shipped migration to its own database and all rows
 remain protected by that project's authentication and access policies. See
 the `cursor-chat-kit` Lovable skill for the installation recipe.
+
+### Per-thread URLs (required)
+
+Every active thread must be identified by the page URL. `navigateToThread`
+**MUST use its `threadId` argument**, and the thread loader **MUST read the
+active thread from the URL**, not always load the first row. Reloading a thread
+URL must restore that same thread.
+
+Use a path-param route for the thread page:
+
+```tsx
+// src/routes/_authenticated/chat.$threadId.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { CursorAgentChat } from "@lovable/cursor-chat-kit/react";
+import { getCursorThread } from "@/lib/cursor/chat.functions";
+
+export const Route = createFileRoute("/_authenticated/chat/$threadId")({
+  loader: ({ params }) => getCursorThread({ data: { threadId: params.threadId } }),
+  component: ChatPage,
+});
+
+function ChatPage() {
+  const data = Route.useLoaderData();
+  return <CursorAgentChat agentName="my-agent" data={data} />;
+}
+```
+
+Redirect the index to the newest existing thread, or create one:
+
+```tsx
+// src/routes/_authenticated/chat.index.tsx
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createCursorThread, listCursorThreads } from "@/lib/cursor/chat.functions";
+
+export const Route = createFileRoute("/_authenticated/chat/")({
+  beforeLoad: async () => {
+    const threads = await listCursorThreads({ data: { agentName: "my-agent" } });
+    const thread = threads[0] ?? await createCursorThread({
+      data: { agentName: "my-agent", title: "New conversation" },
+    });
+    throw redirect({ to: "/chat/$threadId", params: { threadId: thread.id } });
+  },
+});
+```
+
+Wire provider navigation to the same route without discarding the ID:
+
+```tsx
+const navigate = useNavigate();
+const client: CursorChatClient = {
+  // ...database and messaging adapters
+  navigateToThread: (threadId) =>
+    navigate({ to: "/chat/$threadId", params: { threadId } }),
+};
+```

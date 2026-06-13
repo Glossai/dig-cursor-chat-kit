@@ -12,6 +12,7 @@ export type CursorChatClient = {
   }>;
   cancelMessage(input: { cursorAgentId: string; cursorRunId: string }): Promise<{ ok: true }>;
   getAccessToken(): Promise<string | null>;
+  /** MUST navigate to a URL that uniquely identifies threadId; ignoring the argument breaks thread switching. */
   navigateToThread(threadId: string): void | Promise<void>;
   navigateHome?(): void | Promise<void>;
   streamBasePath?: string;
