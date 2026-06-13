@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Copy, Download, RefreshCw, Square, WrapText } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Download, RefreshCw, Square, WrapText } from "lucide-react";
 import {
   ComposerPrimitive,
   MessagePrimitive,
@@ -18,7 +18,7 @@ import { useRetryCursorResponse } from "./useCursorRuntime";
 
 
 
-function CodeHeader({ language, code }: { language?: string; code: string }) {
+function CodeBlock({ language, code }: { language?: string; code: string }) {
   const [copied, setCopied] = useState(false);
   const [wrapped, setWrapped] = useState(false);
   const [collapsed, setCollapsed] = useState(code.split("\n").length > 40);
@@ -28,8 +28,7 @@ function CodeHeader({ language, code }: { language?: string; code: string }) {
       setTimeout(() => setCopied(false), 1500);
     });
   };
-  return (
-    <div className="flex items-center justify-between rounded-t-lg border border-b-0 border-border bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground" data-wrap={wrapped} data-collapsed={collapsed}>
+  return <div className="my-4 overflow-hidden rounded-lg"><div className="flex items-center justify-between rounded-t-lg border border-b-0 border-border bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
       <span className="font-mono">{language ?? "text"}</span>
       <div className="flex items-center gap-1"><Button type="button" variant="ghost" size="sm" onClick={() => setWrapped((value) => !value)} aria-label="Toggle line wrapping"><WrapText className="size-3" />Wrap</Button><Button type="button" variant="ghost" size="sm" onClick={() => setCollapsed((value) => !value)} aria-label="Toggle code block"><ChevronDown className="size-3" />{collapsed ? "Expand" : "Collapse"}</Button><Button type="button" variant="ghost" size="sm" onClick={() => { const blob = new Blob([code], { type: "text/plain" }); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `code.${language ?? "txt"}`; anchor.click(); URL.revokeObjectURL(url); }} aria-label="Download code"><Download className="size-3" />Download</Button><button
         type="button"
@@ -40,8 +39,7 @@ function CodeHeader({ language, code }: { language?: string; code: string }) {
         {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
         {copied ? "Copied" : "Copy"}
       </button></div>
-    </div>
-  );
+    </div>{!collapsed && <div className={wrapped ? "[&_pre]:whitespace-pre-wrap [&_pre]:break-words" : ""}>{language?.toLowerCase() === "mermaid" ? <MermaidDiagram code={code} /> : <HighlightedCode code={code} language={language} />}</div>}</div>;
 }
 
 function ThinkingIndicator() {
@@ -78,23 +76,14 @@ function AssistantMarkdown() {
             );
           }
           const cleaned = text.replace(/\n$/, "");
-          return (
-            <div className="my-4 overflow-hidden rounded-lg">
-              <CodeHeader language={match[1]} code={cleaned} />
-              {match[1].toLowerCase() === "mermaid" ? (
-                <MermaidDiagram code={cleaned} />
-              ) : (
-                <HighlightedCode code={cleaned} language={match[1]} />
-              )}
-            </div>
-          );
+          return <CodeBlock language={match[1]} code={cleaned} />;
         },
       }}
     />
   );
 }
 
-function ChatMessage() {
+function ChatMessage({ threadId }: { threadId: string }) {
   const role = useMessage((state) => state.role);
   const messageId = useMessage((state) => state.id);
   const status = useMessage((state) => state.status);
@@ -117,14 +106,14 @@ function ChatMessage() {
       )}
       <MessagePrimitive.Error>
         <p className="mt-2 text-sm text-destructive">Cursor could not complete this response.</p>
-        {cursorRunId && status?.type === "incomplete" && status.reason === "error" && <RetryResponse cursorRunId={cursorRunId} />}
+        {cursorRunId && status?.type === "incomplete" && status.reason === "error" && <RetryResponse threadId={threadId} cursorRunId={cursorRunId} />}
       </MessagePrimitive.Error>
     </MessagePrimitive.Root>
   );
 }
 
-function RetryResponse({ cursorRunId }: { cursorRunId: string }) {
-  const retry = useRetryCursorResponse(cursorRunId.split(":")[0] ?? "");
+function RetryResponse({ threadId, cursorRunId }: { threadId: string; cursorRunId: string }) {
+  const retry = useRetryCursorResponse(threadId);
   return <Button variant="outline" size="sm" className="mt-2" onClick={() => void retry(cursorRunId)}><RefreshCw />Retry response</Button>;
 }
 
@@ -153,7 +142,7 @@ export function CursorThread({ threadId }: { threadId: string }) {
           </div>
         </ThreadPrimitive.Empty>
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
-          <ThreadPrimitive.Messages components={{ Message: ChatMessage }} />
+          <ThreadPrimitive.Messages components={{ Message: () => <ChatMessage threadId={threadId} /> }} />
         </div>
         <ThreadPrimitive.ScrollToBottom asChild>
           <Button
