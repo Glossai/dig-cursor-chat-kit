@@ -45,13 +45,12 @@ CREATE INDEX cursor_threads_user_archived_idx ON public.cursor_threads (user_id,
 CREATE OR REPLACE FUNCTION public.set_cursor_thread_updated_at()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN
-  IF ROW(NEW.agent_name, NEW.cursor_agent_id, NEW.title, NEW.active_run_id, NEW.pinned_at, NEW.archived_at)
-     IS DISTINCT FROM
-     ROW(OLD.agent_name, OLD.cursor_agent_id, OLD.title, OLD.active_run_id, OLD.pinned_at, OLD.archived_at) THEN
-    NEW.updated_at = now();
-  ELSE
-    NEW.updated_at = OLD.updated_at;
+  IF NEW.updated_at IS DISTINCT FROM OLD.updated_at
+     AND auth.role() = 'service_role' THEN
+    RETURN NEW;
   END IF;
+
+  NEW.updated_at = OLD.updated_at;
   RETURN NEW;
 END;
 $$;
