@@ -30,9 +30,11 @@ import {
 export function CursorThreadSidebar({
   agentName,
   threadId,
+  onSelectThread,
 }: {
   agentName: string;
   threadId: string;
+  onSelectThread?: (thread: CursorThreadType) => void;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -98,6 +100,7 @@ export function CursorThreadSidebar({
                 <Link
                   to="/chat/$threadId"
                   params={{ threadId: thread.id }}
+                  onClick={() => onSelectThread?.(thread)}
                   className="flex min-w-0 flex-1 items-center gap-2"
                 >
                   <ThreadStatusDot thread={thread} isActive={thread.id === threadId} />
