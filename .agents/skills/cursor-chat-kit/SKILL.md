@@ -103,6 +103,8 @@ Start project.
 - Confirm optimistic user text and the thinking indicator appear before
   streamed assistant text.
 - Confirm markdown code blocks use syntax highlighting and copy works.
+- Confirm a fenced `mermaid` block renders as a diagram and malformed Mermaid
+  falls back to readable source without breaking the message.
 - Confirm the sidebar collapses on desktop, opens as a sheet on mobile, and
   its collapse preference/keyboard shortcut work.
 - Confirm stop/cancel, delete, new thread, status dots, and Open in Cursor.

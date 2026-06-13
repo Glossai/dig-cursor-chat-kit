@@ -4,6 +4,7 @@ import { ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useMessage } from
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
 import { HighlightedCode } from "./HighlightedCode";
+import { MermaidDiagram } from "./MermaidDiagram";
 import { Button } from "./ui/button";
 import { cn } from "./ui/utils";
 import type { CursorChatClassNames, CursorChatFeatures, CursorChatLabels, CursorChatSlots } from "./customization";
@@ -50,8 +51,8 @@ function ChatMessage({ labels, classNames, slots, features }: ThreadProps) {
       if (!match) return <code className={className} {...rest}>{children}</code>;
       const code = String(children ?? "").replace(/\n$/, "");
       const CodeBlock = slots.codeBlock;
-      return <div className="my-4 overflow-hidden rounded-lg"><CodeHeader language={match[1]} code={code} />
-        {CodeBlock ? <CodeBlock code={code} language={match[1]} /> : features.codeHighlighting ? <HighlightedCode code={code} language={match[1]} /> : <pre className="overflow-x-auto rounded-b-lg border border-border bg-muted/40 p-4 text-sm"><code>{code}</code></pre>}
+       return <div className="my-4 overflow-hidden rounded-lg"><CodeHeader language={match[1]} code={code} />
+         {CodeBlock ? <CodeBlock code={code} language={match[1]} /> : match[1].toLowerCase() === "mermaid" ? <MermaidDiagram code={code} /> : features.codeHighlighting ? <HighlightedCode code={code} language={match[1]} /> : <pre className="overflow-x-auto rounded-b-lg border border-border bg-muted/40 p-4 text-sm"><code>{code}</code></pre>}
       </div>;
     },
   }} />;
