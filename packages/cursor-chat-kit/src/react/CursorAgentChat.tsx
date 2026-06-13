@@ -39,7 +39,6 @@ function Chat({ agentName, data, title, className, labels: labelOverrides, class
   const runtime = useCursorRuntime({ threadId: thread.id, agentId: thread.cursor_agent_id, initialMessages: messages, liveRunId });
   const labels = { ...defaultCursorChatLabels, ...labelOverrides };
   const features = { ...defaultCursorChatFeatures, ...featureOverrides };
-  useEffect(() => { if (clientUpdateAvailable(features.sidebar)) return; }, [features.sidebar]);
   const status = <StatusLink threadId={thread.id} initialAgentId={thread.cursor_agent_id} label={labels.openInCursor} />;
   const Header = slots.header;
   return <AssistantRuntimeProvider runtime={runtime}>
