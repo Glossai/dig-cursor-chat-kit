@@ -111,6 +111,12 @@ Start project.
 - Confirm the sidebar collapses on desktop, opens as a sheet on mobile, and
   its collapse preference/keyboard shortcut work.
 - Confirm stop/cancel, delete, new thread, status dots, and Open in Cursor.
+- Confirm search finds both titles and prompt content; rename and first-message
+  auto-title update the header/sidebar; pin, archive, restore, and unread state
+  persist in the consuming project.
+- Confirm a failed response can retry without duplicating its user bubble,
+  drafts survive thread switches, and long code blocks wrap, collapse, copy,
+  and download correctly.
 - Confirm a usage row is written only to the consuming project's database and
   cross-user access is blocked.
 - Confirm no package module imports a project-local `@/` path.
