@@ -10,12 +10,17 @@ export type CursorThread = {
   updated_at: string;
   active_run_id?: string | null;
   last_status?: CursorRunStatus | null;
+  pinned_at?: string | null;
+  archived_at?: string | null;
+  last_viewed_at?: string | null;
+  unread?: boolean;
 };
 
 export type CursorUserPromptRow = {
   id: string;
   thread_id: string;
   cursor_run_id: string;
+  retry_of_run_id?: string | null;
   content: string;
   created_at: string;
 };

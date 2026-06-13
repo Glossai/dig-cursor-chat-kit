@@ -26,6 +26,9 @@ CREATE TABLE public.cursor_threads (
   cursor_agent_id text UNIQUE,
   title text NOT NULL CHECK (char_length(title) BETWEEN 1 AND 160),
   active_run_id text,
+  pinned_at timestamptz,
+  archived_at timestamptz,
+  last_viewed_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -37,6 +40,8 @@ CREATE POLICY "Users can create their cursor threads" ON public.cursor_threads F
 CREATE POLICY "Users can update their cursor threads" ON public.cursor_threads FOR UPDATE TO authenticated USING (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE) WITH CHECK (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
 CREATE POLICY "Users can delete their cursor threads" ON public.cursor_threads FOR DELETE TO authenticated USING (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
 CREATE INDEX cursor_threads_user_agent_updated_idx ON public.cursor_threads (user_id, agent_name, updated_at DESC);
+CREATE INDEX cursor_threads_user_agent_active_idx ON public.cursor_threads (user_id, agent_name, pinned_at DESC NULLS LAST, updated_at DESC) WHERE archived_at IS NULL;
+CREATE INDEX cursor_threads_user_archived_idx ON public.cursor_threads (user_id, archived_at DESC) WHERE archived_at IS NOT NULL;
 CREATE TRIGGER cursor_threads_set_updated_at BEFORE UPDATE ON public.cursor_threads FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- user prompts --------------------------------------------------------------
@@ -46,6 +51,7 @@ CREATE TABLE public.cursor_messages (
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   content text NOT NULL DEFAULT '' CHECK (char_length(content) <= 1000000),
   cursor_run_id text NOT NULL UNIQUE,
+  retry_of_run_id text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.cursor_messages TO authenticated;
@@ -60,6 +66,8 @@ CREATE POLICY "Users can create their cursor messages" ON public.cursor_messages
 CREATE POLICY "Users can update their cursor messages" ON public.cursor_messages FOR UPDATE TO authenticated USING (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE) WITH CHECK (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
 CREATE POLICY "Users can delete their cursor messages" ON public.cursor_messages FOR DELETE TO authenticated USING (auth.uid() = user_id AND (auth.jwt() ->> 'is_anonymous')::boolean IS NOT TRUE);
 CREATE INDEX cursor_messages_thread_created_idx ON public.cursor_messages (thread_id, created_at, id);
+CREATE INDEX cursor_messages_retry_of_run_idx ON public.cursor_messages (retry_of_run_id) WHERE retry_of_run_id IS NOT NULL;
+CREATE INDEX cursor_messages_content_search_idx ON public.cursor_messages USING gin (to_tsvector('simple', content));
 
 -- usage ledger --------------------------------------------------------------
 CREATE TABLE public.cursor_run_usage (
