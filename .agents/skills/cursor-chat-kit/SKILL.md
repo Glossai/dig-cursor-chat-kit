@@ -46,21 +46,19 @@ Start project.
 
    ```tsx
    // src/routes/_authenticated/chat.$threadId.tsx
-   import { createFileRoute } from "@tanstack/react-router";
-   import { CursorAgentChat, CursorAgentChatLoading } from "@lovable/cursor-chat-kit/react";
+   import { createFileRoute, useRouterState } from "@tanstack/react-router";
+   import { CursorAgentChat } from "@lovable/cursor-chat-kit/react";
    import { getCursorThread } from "@/lib/cursor/chat.functions";
 
    export const Route = createFileRoute("/_authenticated/chat/$threadId")({
      loader: ({ params }) => getCursorThread({ data: { threadId: params.threadId } }),
-     pendingMs: 0,
-     pendingMinMs: 250,
-     pendingComponent: CursorAgentChatLoading,
      component: ChatPage,
    });
 
    function ChatPage() {
      const data = Route.useLoaderData();
-     return <CursorAgentChat agentName="my-agent" data={data} />;
+     const loading = useRouterState({ select: (state) => state.status === "pending" });
+     return <CursorAgentChat agentName="my-agent" data={data} loading={loading} />;
    }
    ```
 
@@ -89,16 +87,16 @@ Start project.
    };
    ```
 
-   Keep `pendingMs: 0` so clicking a thread navigates immediately and renders
-   the destination loading shell while its loader runs. The package loading
-   component matches the default design; use a host-owned pending component
-   when the chat shell has been customized.
+   Drive the kit's `loading` prop from router pending state so only the
+   conversation viewport shows loading while the sidebar and header remain
+   mounted. Do not add a route-level pending component for thread changes.
 
 ## Verify
 
 - Create two threads, send a message in each, switch, and reload each URL.
 - Throttle the thread loader, click another thread, and confirm the URL and
-  loading shell update immediately instead of leaving the previous thread on screen.
+  conversation loading shell update immediately while the sidebar and header
+  remain unchanged and interactive.
 - Open thread A, send a message, and switch to thread B mid-run. Confirm both
   threads' state is preserved, switching is instant, and reloading either URL
   restores that thread.
