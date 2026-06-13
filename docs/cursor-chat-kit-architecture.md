@@ -1,6 +1,6 @@
 # Cursor Chat Kit — Architecture Proposal
 
-**Status:** v0.1 release candidate implemented.
+**Status:** v0.2 release candidate implemented.
 **Audience:** Frontend Team Lead (second opinion before Phase 2).
 **Scope:** Turn the in-repo Cursor background-agent chat into a reusable kit
 that other Lovable projects (and eventually other teams) can drop in.
@@ -70,17 +70,21 @@ config** (env / secrets, never props).
 
 ```tsx
 <CursorAgentChat
-  threadId={threadId}            // route param; chat is keyed by this
-  agentKey="support-bot"         // logical name → server-side agent mapping
+  agentName="support-bot"        // logical name → server-side agent mapping
+  data={hydratedThread}          // loaded from the consumer project's DB
   className?: string
-  headerSlot?: ReactNode         // custom title / status / branding
-  placeholder?: string           // composer placeholder
-  emptyState?: ReactNode         // shown when thread has no messages
-  onRunComplete?(usage): void    // optional analytics hook
-  onError?(err): void
-  apiBasePath?: string           // default '/api/cursor'
+  labels?: { newThread?, placeholder?, emptyTitle?, ... }
+  classNames?: { userMessage?, composer?, sidebar?, ... }
+  slots?: { header?, emptyState?, codeBlock? }
+  features?: { sidebar?, codeHighlighting?, homeNavigation? }
 />
 ```
+
+All customization fields are optional. The host reference design and behavior
+are the defaults. UI primitives, markdown, icons, responsive sidebar, and
+Shiki are regular package dependencies; React and React DOM remain peers.
+Consumers import `@lovable/cursor-chat-kit/styles.css` and add the package
+`dist` directory as a Tailwind v4 `@source`.
 
 Companion components shipped alongside:
 
