@@ -47,11 +47,14 @@ Start project.
    ```tsx
    // src/routes/_authenticated/chat.$threadId.tsx
    import { createFileRoute } from "@tanstack/react-router";
-   import { CursorAgentChat } from "@lovable/cursor-chat-kit/react";
+   import { CursorAgentChat, CursorAgentChatLoading } from "@lovable/cursor-chat-kit/react";
    import { getCursorThread } from "@/lib/cursor/chat.functions";
 
    export const Route = createFileRoute("/_authenticated/chat/$threadId")({
      loader: ({ params }) => getCursorThread({ data: { threadId: params.threadId } }),
+     pendingMs: 0,
+     pendingMinMs: 250,
+     pendingComponent: CursorAgentChatLoading,
      component: ChatPage,
    });
 
@@ -86,9 +89,16 @@ Start project.
    };
    ```
 
+   Keep `pendingMs: 0` so clicking a thread navigates immediately and renders
+   the destination loading shell while its loader runs. The package loading
+   component matches the default design; use a host-owned pending component
+   when the chat shell has been customized.
+
 ## Verify
 
 - Create two threads, send a message in each, switch, and reload each URL.
+- Throttle the thread loader, click another thread, and confirm the URL and
+  loading shell update immediately instead of leaving the previous thread on screen.
 - Open thread A, send a message, and switch to thread B mid-run. Confirm both
   threads' state is preserved, switching is instant, and reloading either URL
   restores that thread.
