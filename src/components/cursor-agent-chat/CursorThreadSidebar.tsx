@@ -31,6 +31,9 @@ import {
   updateCursorThreadState,
 } from "@/lib/cursor/chat.functions";
 
+const defaultSectionState: Record<string, boolean> = { pinned: true, today: true, yesterday: true, earlier: false };
+let savedSectionState = defaultSectionState;
+
 export function CursorThreadSidebar({
   agentName,
   threadId,
@@ -53,7 +56,11 @@ export function CursorThreadSidebar({
   const [showArchived, setShowArchived] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ pinned: true, today: true, yesterday: true, earlier: false });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => savedSectionState);
+  const toggleSection = (sectionId: string) => setOpenSections((current) => {
+    savedSectionState = { ...current, [sectionId]: !current[sectionId] };
+    return savedSectionState;
+  });
   const threads = useQuery({
     queryKey: ["cursor-threads", agentName, query, showArchived],
     queryFn: () => list({ data: { agentName, query: query || undefined, archived: showArchived } }),
@@ -131,7 +138,7 @@ export function CursorThreadSidebar({
       <SidebarContent className="p-2">
         {!collapsed && <div className="mb-2 space-y-2"><div className="relative"><Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search threads" className="h-8 pl-8" /></div><Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setShowArchived((value) => !value)}><Archive />{showArchived ? "Active threads" : "Archived"}</Button></div>}
         {sections.map((section) => <div key={section.id} className={collapsed || openSections[section.id] ? "mb-2" : "mb-0"}>
-          {!collapsed && <Button variant="ghost" size="sm" className={`${openSections[section.id] ? "mb-1" : "mb-0"} w-full justify-start px-2 text-xs font-medium text-muted-foreground`} onClick={() => setOpenSections((current) => ({ ...current, [section.id]: !current[section.id] }))} aria-expanded={openSections[section.id]}>{openSections[section.id] ? <ChevronDown /> : <ChevronRight />}{section.label}<span className="ml-auto tabular-nums">{section.threads.length}</span></Button>}
+          {!collapsed && <Button variant="ghost" size="sm" className={`${openSections[section.id] ? "mb-1" : "mb-0"} w-full justify-start px-2 text-xs font-medium text-muted-foreground`} onClick={() => toggleSection(section.id)} aria-expanded={openSections[section.id]}>{openSections[section.id] ? <ChevronDown /> : <ChevronRight />}{section.label}<span className="ml-auto tabular-nums">{section.threads.length}</span></Button>}
           {(collapsed || openSections[section.id]) && <SidebarMenu>
           {section.threads.map((thread) => (
             <SidebarMenuItem key={thread.id} className="group/item flex items-center">
