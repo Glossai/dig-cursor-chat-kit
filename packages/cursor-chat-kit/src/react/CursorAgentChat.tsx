@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { CursorThreadHydrated } from "../types";
 import { useCursorRuntime, useCursorThreadAgentId } from "./runtime";
+import { useCursorChatClient } from "./context";
 import { CursorThread } from "./CursorThread";
 import { CursorThreadLoading } from "./CursorThreadLoading";
 import { CursorThreadSidebar } from "./CursorThreadSidebar";
@@ -33,9 +34,11 @@ function StatusLink({ threadId, initialAgentId, label }: { threadId: string; ini
 }
 
 function Chat({ agentName, data, title, className, labels: labelOverrides, classNames = {}, slots = {}, features: featureOverrides, loading = false }: CursorAgentChatProps) {
+  const client = useCursorChatClient();
   const { thread, messages, liveRunId } = data;
   const [optimisticTitle, setOptimisticTitle] = useState(title ?? thread.title);
   useEffect(() => setOptimisticTitle(title ?? thread.title), [thread.id, thread.title, title]);
+  useEffect(() => { void client.updateThread?.({ threadId: thread.id, viewed: true }); }, [client, thread.id]);
   const runtime = useCursorRuntime({ threadId: thread.id, agentId: thread.cursor_agent_id, initialMessages: messages, liveRunId });
   const labels = { ...defaultCursorChatLabels, ...labelOverrides };
   const features = { ...defaultCursorChatFeatures, ...featureOverrides };

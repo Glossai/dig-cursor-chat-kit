@@ -315,6 +315,37 @@ export function createCursorChatBackend(options: CursorChatBackendOptions) {
       };
     },
 
+    async retryMessage(input: { threadId: string; cursorRunId: string }) {
+      const { userId, db } = await auth();
+      const runId = requiredCursorId(input.cursorRunId);
+      const threadResult = await db
+        .from<Pick<ThreadRow, "id" | "agent_name" | "cursor_agent_id">>("cursor_threads")
+        .select("id, agent_name, cursor_agent_id")
+        .eq("id", input.threadId)
+        .eq("user_id", userId)
+        .single();
+      const thread = threadResult.data;
+      if (threadResult.error || !thread?.cursor_agent_id) throw new Error("Conversation not found");
+      const promptResult = await db
+        .from<Pick<PromptRow, "content">>("cursor_messages")
+        .select("content")
+        .eq("thread_id", thread.id)
+        .eq("cursor_run_id", runId)
+        .eq("user_id", userId)
+        .single();
+      if (promptResult.error || !promptResult.data) throw new Error("Original prompt not found");
+      const config = await options.resolveAgentConfig(thread.agent_name);
+      const retryRunId = await createFollowupRun(config, thread.cursor_agent_id, promptResult.data.content);
+      const retryResult = await db
+        .from<{ id: string }>("cursor_messages")
+        .insert({ thread_id: thread.id, user_id: userId, cursor_run_id: retryRunId, content: promptResult.data.content, retry_of_run_id: runId })
+        .select("id")
+        .single();
+      if (retryResult.error || !retryResult.data) throw new Error("Could not retry response");
+      await db.from("cursor_threads").update({ active_run_id: retryRunId }).eq("id", thread.id).eq("user_id", userId);
+      return { promptId: retryResult.data.id, cursorAgentId: thread.cursor_agent_id, cursorRunId: retryRunId };
+    },
+
     async cancelMessage(input: { cursorAgentId: string; cursorRunId: string }) {
       const { userId, db } = await auth();
       const agentId = requiredCursorId(input.cursorAgentId);
