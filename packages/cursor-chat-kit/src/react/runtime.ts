@@ -145,3 +145,27 @@ export function useCursorRuntime(args: { threadId: string; agentId: string | nul
     setMessages: (next) => { store.messages = [...next]; emit(store); },
   });
 }
+
+export function useRetryCursorResponse(threadId: string) {
+  const client = useCursorChatClient();
+  return useCallback(async (cursorRunId: string) => {
+    const store = stores.get(threadId);
+    if (!store || store.running || !client.retryMessage) return;
+    const assistantId = `asst-retry-tmp-${Date.now()}`;
+    store.messages = [...store.messages, { kind: "assistant", id: assistantId, cursor_run_id: "", content: "", status: "running", createdAt: new Date().toISOString() }];
+    store.running = true;
+    emit(store);
+    try {
+      const started = await client.retryMessage({ threadId, cursorRunId });
+      const permanentId = `asst-${started.cursorRunId}`;
+      store.messages = store.messages.map((message) => message.id === assistantId ? { ...message, id: permanentId, cursor_run_id: started.cursorRunId } : message);
+      store.agentId = started.cursorAgentId;
+      emit(store);
+      await stream(client, store, started.cursorAgentId, started.cursorRunId, permanentId);
+    } catch (error) {
+      patch(store, assistantId, { status: "error", errorMessage: error instanceof Error ? error.message : "Retry failed" });
+      store.running = false;
+      emit(store);
+    }
+  }, [client, threadId]);
+}
