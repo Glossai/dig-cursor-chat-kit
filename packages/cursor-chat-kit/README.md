@@ -40,6 +40,8 @@ Tailwind v4 stylesheet after installing the package:
 The `@source` line is required because utility classes such as
 `animate-pulse`, `bg-amber-400`, `bg-emerald-500`, and `rounded-[28px]` live
 inside the installed package rather than the consuming app's source tree.
+The stylesheet also maps Shiki's light/dark token variables to visible token
+colors; omitting it leaves highlighted blocks looking like plain text.
 
 ## React API and customization
 

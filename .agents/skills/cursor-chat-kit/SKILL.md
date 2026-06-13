@@ -103,6 +103,8 @@ Start project.
 - Confirm optimistic user text and the thinking indicator appear before
   streamed assistant text.
 - Confirm markdown code blocks use syntax highlighting and copy works.
+- Inspect multiple token types in a code block (keywords, strings, comments)
+  and confirm they have visibly different colors in both light and dark mode.
 - Confirm a fenced `mermaid` block renders as a diagram and malformed Mermaid
   falls back to readable source without breaking the message.
 - Confirm the sidebar collapses on desktop, opens as a sheet on mobile, and
