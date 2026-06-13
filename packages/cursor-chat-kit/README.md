@@ -28,8 +28,8 @@ packages/cursor-chat-kit/
 
 ## Required CSS setup
 
-The package ships its complete default UI, responsive sidebar, markdown and
-Shiki code highlighting. Add both lines to the consuming project's main
+The package ships its complete default UI, responsive sidebar, markdown,
+Shiki syntax highlighting, and rendered Mermaid fenced blocks. Add both lines to the consuming project's main
 Tailwind v4 stylesheet after installing the package:
 
 ```css

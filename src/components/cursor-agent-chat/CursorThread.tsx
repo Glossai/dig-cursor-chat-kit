@@ -10,6 +10,7 @@ import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { HighlightedCode } from "./HighlightedCode";
+import { MermaidDiagram } from "./MermaidDiagram";
 
 
 
@@ -75,7 +76,11 @@ function AssistantMarkdown() {
           return (
             <div className="my-4 overflow-hidden rounded-lg">
               <CodeHeader language={match[1]} code={cleaned} />
-              <HighlightedCode code={cleaned} language={match[1]} />
+              {match[1].toLowerCase() === "mermaid" ? (
+                <MermaidDiagram code={cleaned} />
+              ) : (
+                <HighlightedCode code={cleaned} language={match[1]} />
+              )}
             </div>
           );
         },
