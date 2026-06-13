@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { ArrowDown, ArrowUp, Check, Copy, Square } from "lucide-react";
-import { ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useMessage } from "@assistant-ui/react";
+import { useEffect, useState } from "react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Download, RefreshCw, Square, WrapText } from "lucide-react";
+import { ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useComposer, useComposerRuntime, useMessage } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
 import { HighlightedCode } from "./HighlightedCode";
+import { MermaidDiagram } from "./MermaidDiagram";
+import { useRetryCursorResponse } from "./runtime";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { Button } from "./ui/button";
 import { cn } from "./ui/utils";
@@ -16,18 +18,20 @@ type ThreadProps = {
   features: Required<CursorChatFeatures>;
 };
 
-function CodeHeader({ language, code }: { language?: string; code: string }) {
+function CodeBlock({ language, code }: { language?: string; code: string }) {
   const [copied, setCopied] = useState(false);
+  const [wrapped, setWrapped] = useState(false);
+  const [collapsed, setCollapsed] = useState(code.split("\n").length > 40);
   const onCopy = () => void navigator.clipboard.writeText(code).then(() => {
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   });
-  return <div className="flex items-center justify-between rounded-t-lg border border-b-0 border-border bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
+  return <div className="my-4 overflow-hidden rounded-lg"><div className="flex items-center justify-between rounded-t-lg border border-b-0 border-border bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
     <span className="font-mono">{language ?? "text"}</span>
-    <button type="button" onClick={onCopy} className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted-foreground/10" aria-label="Copy code">
+    <div className="flex items-center gap-1"><Button variant="ghost" size="sm" onClick={() => setWrapped((value) => !value)}><WrapText className="size-3" />Wrap</Button><Button variant="ghost" size="sm" onClick={() => setCollapsed((value) => !value)}><ChevronDown className="size-3" />{collapsed ? "Expand" : "Collapse"}</Button><Button variant="ghost" size="sm" onClick={() => { const blob = new Blob([code], { type: "text/plain" }); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `code.${language ?? "txt"}`; anchor.click(); URL.revokeObjectURL(url); }}><Download className="size-3" />Download</Button><button type="button" onClick={onCopy} className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted-foreground/10" aria-label="Copy code">
       {copied ? <Check className="size-3" /> : <Copy className="size-3" />}{copied ? "Copied" : "Copy"}
-    </button>
-  </div>;
+    </button></div>
+  </div>{!collapsed && <div className={wrapped ? "[&_pre]:whitespace-pre-wrap [&_pre]:break-words" : ""}>{language?.toLowerCase() === "mermaid" ? <MermaidDiagram code={code} /> : <HighlightedCode code={code} language={language} />}</div>}</div>;
 }
 
 function ThinkingIndicator({ label }: { label: string }) {
@@ -42,8 +46,11 @@ function ThinkingIndicator({ label }: { label: string }) {
   </div>;
 }
 
-function ChatMessage({ labels, classNames, slots, features }: ThreadProps) {
+function ChatMessage({ labels, classNames, slots, features, threadId }: ThreadProps & { threadId: string }) {
   const role = useMessage((state) => state.role);
+  const messageId = useMessage((state) => state.id);
+  const status = useMessage((state) => state.status);
+  const cursorRunId = messageId.startsWith("asst-") ? messageId.slice(5) : null;
   const AssistantMarkdown = () => <MarkdownTextPrimitive className="cursor-markdown" remarkPlugins={[remarkGfm]} components={{
     pre: ({ children }) => <>{children}</>,
     code: ({ className, children, ...rest }) => {
@@ -51,23 +58,34 @@ function ChatMessage({ labels, classNames, slots, features }: ThreadProps) {
       if (!match) return <code className={className} {...rest}>{children}</code>;
       const code = String(children ?? "").replace(/\n$/, "");
       const CodeBlock = slots.codeBlock;
-       return <div className="my-4 overflow-hidden rounded-lg"><CodeHeader language={match[1]} code={code} />
-         {CodeBlock ? <CodeBlock code={code} language={match[1]} /> : match[1].toLowerCase() === "mermaid" ? <MermaidDiagram code={code} /> : features.codeHighlighting ? <HighlightedCode code={code} language={match[1]} /> : <pre className="overflow-x-auto rounded-b-lg border border-border bg-muted/40 p-4 text-sm"><code>{code}</code></pre>}
-      </div>;
+      return CodeBlock ? <div className="my-4 overflow-hidden rounded-lg"><CodeBlock code={code} language={match[1]} /></div> : features.codeHighlighting ? <CodeBlock language={match[1]} code={code} /> : <pre className="overflow-x-auto rounded-lg border border-border bg-muted/40 p-4 text-sm"><code>{code}</code></pre>;
     },
   }} />;
   return <MessagePrimitive.Root className={cn(role === "user" ? "ml-auto w-fit max-w-[80%] rounded-3xl bg-muted px-5 py-2.5 text-foreground" : "mr-auto w-full max-w-full py-2 text-foreground", role === "user" ? classNames.userMessage : classNames.assistantMessage)}>
     {role === "assistant" ? <><MessagePrimitive.Parts components={{ Text: AssistantMarkdown }} /><ThinkingIndicator label={labels.thinking} /></> : <MessagePrimitive.Parts />}
-    <MessagePrimitive.Error><p className="mt-2 text-sm text-destructive">{labels.error}</p></MessagePrimitive.Error>
+    <MessagePrimitive.Error><p className="mt-2 text-sm text-destructive">{labels.error}</p>{cursorRunId && status?.type === "incomplete" && status.reason === "error" && <RetryResponse threadId={threadId} cursorRunId={cursorRunId} />}</MessagePrimitive.Error>
   </MessagePrimitive.Root>;
 }
 
-export function CursorThread(props: ThreadProps) {
+function RetryResponse({ threadId, cursorRunId }: { threadId: string; cursorRunId: string }) {
+  const retry = useRetryCursorResponse(threadId);
+  return <Button variant="outline" size="sm" className="mt-2" onClick={() => void retry(cursorRunId)}><RefreshCw />Retry response</Button>;
+}
+
+function DraftKeeper({ threadId }: { threadId: string }) {
+  const text = useComposer((state) => state.text);
+  const composer = useComposerRuntime();
+  useEffect(() => { composer.setText(localStorage.getItem(`cursor-chat-draft:${threadId}`) ?? ""); }, [composer, threadId]);
+  useEffect(() => { localStorage.setItem(`cursor-chat-draft:${threadId}`, text); }, [text, threadId]);
+  return null;
+}
+
+export function CursorThread(props: ThreadProps & { threadId: string }) {
   const EmptyState = props.slots.emptyState;
   return <ThreadPrimitive.Root className={cn("flex min-h-0 flex-1 flex-col bg-background", props.classNames.thread)}>
-    <ThreadPrimitive.Viewport className="relative flex min-h-0 flex-1 flex-col overflow-y-auto" autoScroll>
+    <DraftKeeper threadId={props.threadId} /><ThreadPrimitive.Viewport className="relative flex min-h-0 flex-1 flex-col overflow-y-auto" autoScroll>
       <ThreadPrimitive.Empty>{EmptyState ? <EmptyState /> : <div className={cn("m-auto max-w-lg px-6 py-24 text-center", props.classNames.emptyState)}><h2 className="text-3xl font-semibold tracking-tight">{props.labels.emptyTitle}</h2><p className="mt-3 text-sm text-muted-foreground">{props.labels.emptyDescription}</p></div>}</ThreadPrimitive.Empty>
-      <div className={cn("mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8", props.classNames.messages)}><ThreadPrimitive.Messages components={{ Message: () => <ChatMessage {...props} /> }} /></div>
+      <div className={cn("mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8", props.classNames.messages)}><ThreadPrimitive.Messages components={{ Message: () => <ChatMessage {...props} threadId={props.threadId} /> }} /></div>
       <ThreadPrimitive.ScrollToBottom asChild><Button className="absolute bottom-32 left-1/2 size-8 -translate-x-1/2 rounded-full shadow-md" size="icon" variant="outline" aria-label="Scroll to latest"><ArrowDown className="size-4" /></Button></ThreadPrimitive.ScrollToBottom>
       <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mx-auto w-full max-w-3xl bg-gradient-to-t from-background via-background to-transparent px-4 pb-4 pt-6">
         <ComposerPrimitive.Root className={cn("flex items-end gap-2 rounded-[28px] border bg-card px-3 py-2 shadow-sm transition-shadow focus-within:border-ring/40 focus-within:shadow-md", props.classNames.composer)}>
