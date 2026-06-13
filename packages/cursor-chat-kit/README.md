@@ -83,11 +83,14 @@ Use a path-param route for the thread page:
 ```tsx
 // src/routes/_authenticated/chat.$threadId.tsx
 import { createFileRoute } from "@tanstack/react-router";
-import { CursorAgentChat } from "@lovable/cursor-chat-kit/react";
+import { CursorAgentChat, CursorAgentChatLoading } from "@lovable/cursor-chat-kit/react";
 import { getCursorThread } from "@/lib/cursor/chat.functions";
 
 export const Route = createFileRoute("/_authenticated/chat/$threadId")({
   loader: ({ params }) => getCursorThread({ data: { threadId: params.threadId } }),
+  pendingMs: 0,
+  pendingMinMs: 250,
+  pendingComponent: CursorAgentChatLoading,
   component: ChatPage,
 });
 
@@ -125,3 +128,9 @@ const client: CursorChatClient = {
     navigate({ to: "/chat/$threadId", params: { threadId } }),
 };
 ```
+
+`pendingMs: 0` makes the destination render immediately after a click instead
+of leaving the previous thread visible while its loader runs. The exported
+`CursorAgentChatLoading` mirrors the default chat layout; `pendingMinMs` avoids
+a distracting flash on very fast loads. Consumers with a custom chat shell may
+provide their own `pendingComponent` instead.
