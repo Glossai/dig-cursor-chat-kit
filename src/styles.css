@@ -216,4 +216,12 @@
   .cursor-markdown pre {
     font-family: var(--font-mono);
   }
+  .cursor-shiki .shiki,
+  .cursor-shiki .shiki span {
+    color: var(--shiki-light);
+  }
+  .dark .cursor-shiki .shiki,
+  .dark .cursor-shiki .shiki span {
+    color: var(--shiki-dark);
+  }
 }
