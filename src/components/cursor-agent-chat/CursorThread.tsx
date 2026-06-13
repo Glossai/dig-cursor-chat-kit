@@ -21,7 +21,7 @@ import { useRetryCursorResponse } from "./useCursorRuntime";
 function CodeBlock({ language, code }: { language?: string; code: string }) {
   const [copied, setCopied] = useState(false);
   const [wrapped, setWrapped] = useState(false);
-  const [collapsed, setCollapsed] = useState(code.split("\n").length > 40);
+  const [collapsed, setCollapsed] = useState(false);
   const onCopy = () => {
     void navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
