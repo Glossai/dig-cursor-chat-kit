@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { ArrowDown, ArrowUp, Check, Copy, Square } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Copy, Download, RefreshCw, Square, WrapText } from "lucide-react";
 import {
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
+  useComposer,
+  useComposerRuntime,
   useMessage,
 } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
@@ -11,12 +13,15 @@ import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { HighlightedCode } from "./HighlightedCode";
 import { MermaidDiagram } from "./MermaidDiagram";
+import { useRetryCursorResponse } from "./useCursorRuntime";
 
 
 
 
 function CodeHeader({ language, code }: { language?: string; code: string }) {
   const [copied, setCopied] = useState(false);
+  const [wrapped, setWrapped] = useState(false);
+  const [collapsed, setCollapsed] = useState(code.split("\n").length > 40);
   const onCopy = () => {
     void navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
@@ -24,9 +29,9 @@ function CodeHeader({ language, code }: { language?: string; code: string }) {
     });
   };
   return (
-    <div className="flex items-center justify-between rounded-t-lg border border-b-0 border-border bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
+    <div className="flex items-center justify-between rounded-t-lg border border-b-0 border-border bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground" data-wrap={wrapped} data-collapsed={collapsed}>
       <span className="font-mono">{language ?? "text"}</span>
-      <button
+      <div className="flex items-center gap-1"><Button type="button" variant="ghost" size="sm" onClick={() => setWrapped((value) => !value)} aria-label="Toggle line wrapping"><WrapText className="size-3" />Wrap</Button><Button type="button" variant="ghost" size="sm" onClick={() => setCollapsed((value) => !value)} aria-label="Toggle code block"><ChevronDown className="size-3" />{collapsed ? "Expand" : "Collapse"}</Button><Button type="button" variant="ghost" size="sm" onClick={() => { const blob = new Blob([code], { type: "text/plain" }); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `code.${language ?? "txt"}`; anchor.click(); URL.revokeObjectURL(url); }} aria-label="Download code"><Download className="size-3" />Download</Button><button
         type="button"
         onClick={onCopy}
         className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted-foreground/10"
@@ -34,7 +39,7 @@ function CodeHeader({ language, code }: { language?: string; code: string }) {
       >
         {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
         {copied ? "Copied" : "Copy"}
-      </button>
+      </button></div>
     </div>
   );
 }
@@ -91,6 +96,9 @@ function AssistantMarkdown() {
 
 function ChatMessage() {
   const role = useMessage((state) => state.role);
+  const messageId = useMessage((state) => state.id);
+  const status = useMessage((state) => state.status);
+  const cursorRunId = messageId.startsWith("asst-") ? messageId.slice(5) : null;
   return (
     <MessagePrimitive.Root
       className={
@@ -109,15 +117,29 @@ function ChatMessage() {
       )}
       <MessagePrimitive.Error>
         <p className="mt-2 text-sm text-destructive">Cursor could not complete this response.</p>
+        {cursorRunId && status?.type === "incomplete" && status.reason === "error" && <RetryResponse cursorRunId={cursorRunId} />}
       </MessagePrimitive.Error>
     </MessagePrimitive.Root>
   );
 }
 
-export function CursorThread() {
+function RetryResponse({ cursorRunId }: { cursorRunId: string }) {
+  const retry = useRetryCursorResponse(cursorRunId.split(":")[0] ?? "");
+  return <Button variant="outline" size="sm" className="mt-2" onClick={() => void retry(cursorRunId)}><RefreshCw />Retry response</Button>;
+}
+
+function DraftKeeper({ threadId }: { threadId: string }) {
+  const text = useComposer((state) => state.text);
+  const composer = useComposerRuntime();
+  useEffect(() => { composer.setText(localStorage.getItem(`cursor-chat-draft:${threadId}`) ?? ""); }, [composer, threadId]);
+  useEffect(() => { localStorage.setItem(`cursor-chat-draft:${threadId}`, text); }, [text, threadId]);
+  return null;
+}
+
+export function CursorThread({ threadId }: { threadId: string }) {
   return (
     <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col bg-background">
-      <ThreadPrimitive.Viewport
+      <DraftKeeper threadId={threadId} /><ThreadPrimitive.Viewport
         className="relative flex min-h-0 flex-1 flex-col overflow-y-auto"
         autoScroll
       >
