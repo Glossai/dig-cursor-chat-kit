@@ -1,8 +1,9 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useThread } from "@assistant-ui/react";
-import { Archive, Check, Home, MessageSquare, MoreHorizontal, Pencil, Pin, Plus, Search, Trash2, X } from "lucide-react";
+import { Archive, Home, MessageSquare, MoreHorizontal, Pencil, Pin, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CursorThread as CursorThreadType } from "@/lib/cursor/types";
@@ -48,10 +49,10 @@ export function CursorThreadSidebar({
   const remove = useServerFn(deleteCursorThread);
   const rename = useServerFn(renameCursorThread);
   const updateState = useServerFn(updateCursorThreadState);
-  const [query, setQuery] = React.useState("");
-  const [showArchived, setShowArchived] = React.useState(false);
-  const [editingId, setEditingId] = React.useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = React.useState("");
+  const [query, setQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
   const threads = useQuery({
     queryKey: ["cursor-threads", agentName, query, showArchived],
     queryFn: () => list({ data: { agentName, query: query || undefined, archived: showArchived } }),
