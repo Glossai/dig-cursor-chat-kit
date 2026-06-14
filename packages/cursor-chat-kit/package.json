@@ -1,5 +1,5 @@
 {
-  "name": "@lovable/cursor-chat-kit",
+  "name": "@glossai/cursor-chat-kit",
   "version": "0.2.0",
   "private": false,
   "description": "Reusable Cursor background-agent chat for Lovable TanStack Start projects.",
